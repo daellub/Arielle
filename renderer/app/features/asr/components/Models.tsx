@@ -8,15 +8,15 @@ import { motion, AnimatePresence } from 'motion/react'
 import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
 
-import AddModel from './AddModel'
-import { fetchModels } from '../utils/api'
-import ModelPopup from './ModelPopup'
+import AddModel from '@/app/features/asr/components/AddModel'
+import { fetchModels } from '@/app/features/asr/utils/api'
+import ModelPopup from '@/app/features/asr/components/ModelPopup'
 import Notification from './Notification'
 import ConfirmPopup from './ConfirmPopup'
-import { useMicInputLevel } from '../hooks/useMicInputLevel'
+import { useMicInputLevel } from '@/app/features/asr/hooks/useMicInputLevel'
 import SettingsPanel from './Settings'
-import { useSelectedModelStore } from '../store/useSelectedModelStore'
-import { Model, ModelStatus } from '../types/Model'
+import { useSelectedModelStore } from '@/app/features/asr/store/useSelectedModelStore'
+import { Model, ModelStatus } from '@/app/features/asr/types/Model'
 
 // 레이턴시 파싱
 const parseLatency = (latency: string | number | null | undefined): number => {

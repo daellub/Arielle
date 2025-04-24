@@ -2,8 +2,8 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { useMicStore } from '../store/useMicStore'
-import { useMicInputLevel } from '../hooks/useMicInputLevel'
+import { useMicStore } from '@/app/features/asr/store/useMicStore'
+import { useMicInputLevel } from '@/app/features/asr/hooks/useMicInputLevel'
 
 export default function MicStatus() {
     const {

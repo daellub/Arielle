@@ -1,13 +1,13 @@
 // app/page.tsx
 'use client'
 
-import Sidebar from './components/Sidebar'
-import Models from './components/Models'
-import MicStatus from './components/MicStatus'
-import LiveTranscriptPanel from './components/LiveTranscriptPanel'
+import Sidebar from '@/app/features/asr/components/Sidebar'
+import Models from '@/app/features/asr/components/Models'
+import MicStatus from '@/app/features/asr/components/MicStatus'
+import LiveTranscriptPanel from '@/app/features/asr/components/LiveTranscriptPanel'
 
-import { useMicInputLevel } from './hooks/useMicInputLevel'
-import { useMicStore } from './store/useMicStore'
+import { useMicInputLevel } from '@/app/features/asr/hooks/useMicInputLevel'
+import { useMicStore } from '@/app/features/asr/store/useMicStore'
 import { useEffect } from 'react'
 
 export default function Home() {

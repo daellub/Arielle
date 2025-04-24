@@ -1,11 +1,6 @@
 // public/processor.js
 
-class AudioProcessor extends AudioWorklet {
-    constructor() {
-        super()
-        this.buffer = []
-    }
-
+class AudioProcessor extends AudioWorkletProcessor {
     process(inputs, outputs, parameters) {
         const input = inputs[0][0]
         if (input) {

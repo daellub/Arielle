@@ -2,16 +2,17 @@
 'use client'
 
 import { io, Socket } from 'socket.io-client'
-import React, { useEffect, useState, useRef} from 'react'
+import React, { useEffect, useState } from 'react'
 import { AnimatePresence } from 'motion/react'
 
-import { useMicSocket } from '../hooks/useMicSocket'
-import { useMicStore } from '../store/useMicStore'
-import { Transcript, useTranscriptStore } from '../store/useTranscriptStore'
-import { useSelectedModelStore } from '../store/useSelectedModelStore'
+import { initMicSocket } from '@/app/features/asr/hooks/initMicSocket'
+import { useMicStore } from '@/app/features/asr/store/useMicStore'
+import { Transcript, useTranscriptStore } from '@/app/features/asr/store/useTranscriptStore'
+import { useSelectedModelStore } from '@/app/features/asr/store/useSelectedModelStore'
 import Notification from './Notification'
 
 let socket: Socket
+let micStream: { stop: () => void } | null = null
 
 export default function LiveTranscriptPanel() {
     const { 
@@ -33,6 +34,7 @@ export default function LiveTranscriptPanel() {
     } = useMicStore()
 
     const { selectedModel } = useSelectedModelStore()
+
     const [isConnected, setIsConnected] = useState(false)
     const [isRecording, setIsRecording] = useState(false)
     const [notification, setNotification] = useState<{
@@ -40,21 +42,10 @@ export default function LiveTranscriptPanel() {
         type?: 'success' | 'error' | 'info'
     } | null>(null)
 
-    useEffect(() => {
-        if (isConnected && !isRecording && socket && deviceId) {
-            console.log('[AUDIO] 마이크 스트리밍 시작됨')
-            useMicSocket({
-                socket, 
-                deviceId,
-                sampleRate,
-                volumeGain,
-                noiseSuppression,
-                echoCancellation,
-                useVAD,
-                silenceTimeout,
-            })
-        }
-    }, [isConnected, socket, deviceId, sampleRate, volumeGain])
+    const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+        setNotification({ message, type })
+        setTimeout(() => setNotification(null), 2500)
+    } 
 
     const handleStart = () => {
         if (!selectedModel || selectedModel.status !== 'active') {
@@ -68,16 +59,32 @@ export default function LiveTranscriptPanel() {
         }
 
         socket = io('http://localhost:8000', {
+            path: "/socket.io",
             transports: ['websocket'],
             autoConnect: true,
             withCredentials: true,
         })
 
-        socket.on('connect', () => {
+        socket.on('connect', async () => {
             console.log('[SOCKET] 연결 성공')
+            console.log('[DEBUG] selectedModel:', selectedModel)
             setIsConnected(true)
             showNotification('Socket과 연결되었습니다.', 'success')
 
+            socket.emit('hello', { msg: '테스트' })
+
+            micStream = await initMicSocket({
+                socket,
+                deviceId,
+                sampleRate,
+                volumeGain,
+                noiseSuppression,
+                echoCancellation,
+                useVAD,
+                silenceTimeout
+            })
+
+            console.log('[SOCKET] emit start_transcribe:', selectedModel.id)
             socket.emit('start_transcribe', { model_id: selectedModel.id })
             setIsRecording(true)
         })
@@ -103,27 +110,27 @@ export default function LiveTranscriptPanel() {
         })
     }
 
-    const handleReset = () => {
-        showNotification('전사된 텍스트를 초기화했습니다.', 'info')
-        clearTranscript()
-    }
-
     const handleStop = () => {
         if (!selectedModel || selectedModel.status !== 'active') {
             showNotification('모델이 선택되지 않았거나 종료된 상태입니다.', 'info')
             return
         }
+        if (socket) {
+            socket.disconnect()
+        }
+        if (micStream) {
+            micStream.stop()
+        }
 
-        socket?.disconnect()
         setIsConnected(false)
         setIsRecording(false)
         stopTranscript()
-    }
+    } 
 
-    const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-        setNotification({ message, type })
-        setTimeout(() => setNotification(null), 2500)
-    }  
+    const handleReset = () => {
+        showNotification('전사된 텍스트를 초기화했습니다.', 'info')
+        clearTranscript()
+    }
 
     return (
         <>

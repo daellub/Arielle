@@ -5,13 +5,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import socketio
 
+from backend.sio import sio
 from backend.asr.service import router as asr_router
+from backend.asr import socket_handlers
+print("🔥 socket_handlers 로드됨")
 
-sio = socketio.AsyncServer(
-    async_mode='asgi',
-    cors_allowed_origins=['http://localhost:3000'],
-    allow_upgrades=True
-)
+print("[DEBUG] main.sio id:", id(sio))
 
 fastapi_app = FastAPI(title="Arielle AI Backend Server")
 
@@ -26,7 +25,11 @@ fastapi_app.add_middleware(
 fastapi_app.mount("/static", StaticFiles(directory="backend/static"), name="static")
 fastapi_app.include_router(asr_router, prefix="/asr", tags=["ASR"])
 
-app = socketio.ASGIApp(sio, other_asgi_app=fastapi_app)
+app = socketio.ASGIApp(
+    sio, 
+    other_asgi_app=fastapi_app,
+    socketio_path="/socket.io"    
+)
 
 @sio.event
 async def connect(sid, environ):

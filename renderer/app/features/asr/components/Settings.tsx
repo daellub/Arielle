@@ -4,8 +4,8 @@
 import { motion, AnimatePresence } from 'motion/react'
 import React, { useEffect, useState } from 'react'
 import MicStatus from './MicStatus'
-import { useMicInputLevel } from '../hooks/useMicInputLevel'
-import { useMicStore } from '../store/useMicStore'
+import { useMicInputLevel } from '@/app/features/asr/hooks/useMicInputLevel'
+import { useMicStore } from '@/app/features/asr/store/useMicStore'
 
 interface Props {
     onClose: () => void
