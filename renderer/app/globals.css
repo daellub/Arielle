@@ -1,0 +1,140 @@
+/* app/globals.css */
+
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --font-main: 'MapoPeacefull', 'sans-serif';
+  --font-hakgyo: 'HakgyoansimWoojuR', 'sans-serif';
+  --font-gowun: 'GowunDodum-Regular', 'sans-serif';
+  --font-circle: 'TheCircleM', 'sans-serif';
+  --font-S-CoreDream-3Light: 'S-CoreDream-3Light', 'sans-serif';
+  --font-DungGeunMo: 'DungGeunMo', 'sans-serif';
+  --font-omyu_pretty: 'omyu_pretty', 'sans-serif';
+}
+
+/* 메인 폰트 */
+@font-face {
+  font-family: 'MapoPeacefull';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/MapoPeacefullA.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.font-MapoPeacefull {
+  font-family: var(--font-main);
+}
+
+@font-face {
+  font-family: 'DungGeunMo';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/DungGeunMo.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.font-DungGeunMo {
+  font-family: var(--font-DungGeunMo);
+}
+
+@font-face {
+  font-family: 'omyu_pretty';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2304-01@1.0/omyu_pretty.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.font-omyu_pretty {
+  font-family: var(--font-omyu_pretty);
+}
+
+@font-face {
+  font-family: 'BMDohyeon';
+  src: url('/fonts/BMDOHYEON_ttf.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'TheCircleM';
+  src: url('/fonts/TheCircleM.ttf') format('truetype');
+}
+
+.font-TheCircleM {
+  font-family: var(--font-circle);
+}
+
+@font-face {
+  font-family: 'GowunDodum-Regular';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2108@1.1/GowunDodum-Regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.font-GowunDodum-Regular {
+  font-family: var(--font-gowun);
+}
+
+@font-face {
+  font-family: 'HakgyoansimWoojuR';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_2307-2@1.0/HakgyoansimWoojuR.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.font-HakgyoansimWoojuR {
+  font-family: var(--font-hakgyo);
+}
+
+@font-face {
+  font-family: 'S-CoreDream-3Light';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/S-CoreDream-3Light.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.font-S-CoreDream-3Light {
+  font-family: var(--font-S-CoreDream-3Light);
+}
+
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+@keyframes load_spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate_loading {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+.status-bar-dot {
+  animation: blink 1.2s infinite ease-in-out;
+}
+
+.input {
+  @apply w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'MapoPeacefull', 'HakgyoansimWoojuR', Arial, Helvetica, sans-serif;
+}
