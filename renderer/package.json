@@ -10,10 +10,13 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@picovoice/web-voice-processor": "^4.0.9",
+    "@ricky0123/vad-web": "^0.0.22",
     "axios": "^1.8.4",
     "clsx": "^2.1.1",
     "motion": "^12.7.3",
     "next": "15.3.0",
+    "onnxruntime-web": "^1.21.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "socket.io-client": "^4.8.1",
