@@ -12,6 +12,8 @@ class ModelRegister(BaseModel):
     path: str
     status: Optional[str] = "idle"
     main: Optional[str] = ""
+    endpoint: Optional[str] = ""
+    apiKey: Optional[str] = ""
 
 class InferenceRequest(BaseModel):
     model_id: str

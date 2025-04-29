@@ -17,7 +17,7 @@ export const initMicSocket = async ({
     socket,
     deviceId,
     sampleRate,
-    volumeGain,
+    volumeGain
 }: MicOptions) => {
     const audioContext = new AudioContext()
     await audioContext.audioWorklet.addModule('/processor.js')

@@ -18,6 +18,8 @@ import SettingsPanel from './Settings'
 import { useSelectedModelStore } from '@/app/features/asr/store/useSelectedModelStore'
 import { Model, ModelStatus } from '@/app/features/asr/types/Model'
 
+import { useMicStore } from '@/app/features/asr/store/useMicStore'
+
 // 레이턴시 파싱
 const parseLatency = (latency: string | number | null | undefined): number => {
     if (typeof latency === 'number') return latency;
@@ -25,7 +27,7 @@ const parseLatency = (latency: string | number | null | undefined): number => {
         const num = parseFloat(latency.replace("ms", "").trim())
         return isNaN(num) ? 0 : num
     }
-    return 0 // fallback
+    return 0 // Fallback
 };
 
 const StatusBar = ({ status, latency }: { status: ModelStatus, latency: string }) => {
@@ -162,7 +164,7 @@ export default function Models() {
         setNotification({ message, type })
         setTimeout(() => setNotification(null), 3000)
     }
-
+    
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -245,7 +247,6 @@ export default function Models() {
                                     className="w-full text-left font-MapoPeacefull px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 flex items-center gap-x-2"
                                     onClick={() => {
                                         setMenuOpen(false)
-                                        // showNotification('환경설정이 클릭되었습니다.', 'info')
                                         setShowSettings(true)
                                     }}
                                 >
@@ -430,7 +431,7 @@ export default function Models() {
                             updateModelStatus(selectedModel.id, 'loading')
 
                             try {
-                                await axios.post(`http://localhost:8000/asr/models/load/${selectedModel?.id}`) 
+                                await axios.post(`http://localhost:8000/asr/models/load/${selectedModel?.id}`)
                                 showNotification('모델을 로드했습니다.', 'success')
                                 await handleRefresh()
                             } catch (err) {

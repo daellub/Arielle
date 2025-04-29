@@ -5,33 +5,30 @@ import { io, Socket } from 'socket.io-client'
 import React, { useEffect, useState } from 'react'
 import { AnimatePresence } from 'motion/react'
 
-import { initMicSocket } from '@/app/features/asr/hooks/initMicSocket'
 import { useMicStore } from '@/app/features/asr/store/useMicStore'
 import { Transcript, useTranscriptStore } from '@/app/features/asr/store/useTranscriptStore'
 import { useSelectedModelStore } from '@/app/features/asr/store/useSelectedModelStore'
 import Notification from './Notification'
 
 let socket: Socket
-let micStream: { stop: () => void } | null = null
 
 export default function LiveTranscriptPanel() {
     const { 
-        currentTranscript, 
-        history,
-        setTranscript: setTranscriptToStore,
+        setTranscript: addTranscript,
+        stopTranscript,
         clearTranscript,
-        stopTranscript
+        history
     } = useTranscriptStore()
 
-    const {
-        deviceId,
-        sampleRate,
-        volumeGain,
-        noiseSuppression,
-        echoCancellation,
-        useVAD,
-        silenceTimeout
-    } = useMicStore()
+    // const {
+    //     deviceId,
+    //     sampleRate,
+    //     volumeGain,
+    //     noiseSuppression,
+    //     echoCancellation,
+    //     useVAD,
+    //     silenceTimeout
+    // } = useMicStore()
 
     const { selectedModel } = useSelectedModelStore()
 
@@ -67,25 +64,10 @@ export default function LiveTranscriptPanel() {
 
         socket.on('connect', async () => {
             console.log('[SOCKET] 연결 성공')
-            console.log('[DEBUG] selectedModel:', selectedModel)
             setIsConnected(true)
             showNotification('Socket과 연결되었습니다.', 'success')
 
-            socket.emit('hello', { msg: '테스트' })
-
-            micStream = await initMicSocket({
-                socket,
-                deviceId,
-                sampleRate,
-                volumeGain,
-                noiseSuppression,
-                echoCancellation,
-                useVAD,
-                silenceTimeout
-            })
-
-            console.log('[SOCKET] emit start_transcribe:', selectedModel.id)
-            socket.emit('start_transcribe', { model_id: selectedModel.id })
+            socket.emit('start_azure_mic', {})
             setIsRecording(true)
         })
 
@@ -95,7 +77,7 @@ export default function LiveTranscriptPanel() {
                 lang: 'ko',
                 timestamp: new Date().toLocaleTimeString()
             }
-            setTranscriptToStore(newTranscript)
+            addTranscript(newTranscript)
         })
 
         socket.on('disconnect', () => {
@@ -118,14 +100,11 @@ export default function LiveTranscriptPanel() {
         if (socket) {
             socket.disconnect()
         }
-        if (micStream) {
-            micStream.stop()
-        }
 
         setIsConnected(false)
         setIsRecording(false)
         stopTranscript()
-    } 
+    }
 
     const handleReset = () => {
         showNotification('전사된 텍스트를 초기화했습니다.', 'info')

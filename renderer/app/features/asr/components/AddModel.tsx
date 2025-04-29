@@ -6,15 +6,18 @@ import clsx from 'clsx'
 import { useState } from 'react'
 import Select from 'react-select'
 import CreatableSelect from 'react-select/creatable'
-import { AnimatePresence } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 
 import Notification from './Notification'
+import HuggingFaceModelDrawer from './HuggingFaceModelDrawer'
+import { HuggingFaceModel } from '@/app/features/asr/utils/huggingFaceAPI'
 
 
 const modelOptions = [
     { value: "OpenAI", label: "OpenAI" },
     { value: "Meta", label: "Meta" },
     { value: "Google", label: "Google" },
+    { value: "Azure", label: "Azure" },
 ];
 
 const libraryOptions = [
@@ -53,6 +56,13 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
     const [notification, setNotification] = useState<{ message: string; type?: 'success' | 'error' | 'info' } | null>(null)
     const [isLoading, setIsLoading] = useState(false)
 
+    const [showHuggingFaceDrawer, setShowHuggingfaceDrawer] = useState(false)
+
+    // Azure 설정
+    const isAzureModel = main === 'Azure'
+    const [endpoint, setEndpoint] = useState('')
+    const [apiKey, setApiKey] = useState('')
+
     const resetForm = () => {
         setName('')
         setMain('')
@@ -60,34 +70,59 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
         setDevice('CPU')
         setLanguage('ko')
         setPath('')
+        setEndpoint('')
+        setApiKey('')
     }
 
     const handleSubmit = async () => {
-        if (!name || !main || !library || !device || !path) {
-            showNotification("모든 필드를 입력해주세요!", 'info')
-            return
+        const isFieldEmpty = (field: string | undefined) => !field || field.trim() === ''
+
+        if (isAzureModel) {
+            if (isFieldEmpty(name) || isFieldEmpty(main) || isFieldEmpty(endpoint) || isFieldEmpty(apiKey)) {
+                showNotification("모든 필드를 입력해주세요!", 'info');
+                return;
+            }
+        } else {
+            if (isFieldEmpty(name) || isFieldEmpty(main) || isFieldEmpty(library) || isFieldEmpty(device) || isFieldEmpty(path)) {
+                showNotification("모든 필드를 입력해주세요!", 'info');
+                return;
+            }
         }
 
         setIsLoading(true)
-
-        const body = {
-            name,
-            type: main,
-            framework: library,
-            device,
-            language,
-            path
-        }
         
         try {
-            const res = await axios.post("http://localhost:8000/asr/models/register", body)
-            if (res.status !== 200) throw new Error("모델 등록을 실패했습니다.");
+            if (isAzureModel) {
+                const azureBody = {
+                    name,
+                    type: main,
+                    framework: "Azure",
+                    device: "API",
+                    language,
+                    endpoint,
+                    apiKey,
+                    path: "",
+                }
+
+                await axios.post("http://localhost:8000/asr/models/register", azureBody)
+            } else {
+                const whisperBody = {
+                    name,
+                    type: main,
+                    framework: library,
+                    device,
+                    language,
+                    path,
+                }
+
+                await axios.post("http://localhost:8000/asr/models/register", whisperBody)
+            }
 
             showNotification("모델을 등록했습니다.", 'success')
             resetForm()
             onClose()
             onModelAdded?.()
-        } catch (err) {
+        } catch (err: any) {
             showNotification("모델 등록을 실패했습니다.", 'error')
             console.error(err)
         } finally {
@@ -98,6 +133,15 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
     const handleBrowseModelPath = async () => {
         const selectedPath = await window.electronAPI.openModelDialog()
         if (selectedPath) setPath(selectedPath)
+    }
+
+    const handleSelectModelFromHuggingface = (model: HuggingFaceModel) => {
+        setMain('Whisper')
+        setName(model.cardData?.pretty_name || model.id)
+        setLibrary('Transformer')
+        setDevice('CPU')
+        setLanguage('ko')
+        setPath(`/models/${model.id}`)
     }
 
     const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -127,47 +171,93 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
                             value={name} 
                             onChange={e => setName(e.target.value)} 
                             className="input" 
-                            placeholder="모델 이름 (예: Whisper-Small 등 사용자 지정)"
+                            placeholder={!isAzureModel ? "모델 이름 (예: Whisper-Small 등 사용자 지정)" : "모델 이름 (예: Azure Main 등 사용자 지정)"}
                         />
-        
-                        <Select 
-                            options={libraryOptions} 
-                            value={libraryOptions.find(option => option.value === library)}
-                            onChange={option => setLibrary(option?.value || "")} 
-                            placeholder="라이브러리 선택"
-                            noOptionsMessage={() => "옵션이 없습니다!"}
-                        />
-        
-                        <Select 
-                            options={deviceOptions} 
-                            value={deviceOptions.find(option => option.value === device)}
-                            onChange={option => setDevice(option?.value || "")} 
-                            placeholder="장치 선택"
-                            noOptionsMessage={() => "장치가 없습니다!"}
-                        />
-        
-                        <Select 
-                            options={languageOptions} 
-                            value={languageOptions.find(option => option.value === language)}
-                            onChange={option => setLanguage(option?.value || "")} 
-                            placeholder="언어 선택"
-                        />
-        
-                        <input 
-                            type="text"
-                            value={path} 
-                            readOnly 
-                            className="input" 
-                            placeholder="모델 경로 선택"
-                        />
-                        <button 
-                            onClick={handleBrowseModelPath}
-                            className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
-                        >
-                            선택
-                        </button>
+
+                        <AnimatePresence mode='wait'>
+                            {!isAzureModel&& (
+                                <motion.div
+                                    key='normal-form'
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    transition={{ duration: 0.25 }}
+                                    className="space-y-3"
+                                >
+                                    <Select 
+                                        options={libraryOptions} 
+                                        value={libraryOptions.find(option => option.value === library)}
+                                        onChange={option => setLibrary(option?.value || "")} 
+                                        placeholder="라이브러리 선택"
+                                        noOptionsMessage={() => "옵션이 없습니다!"}
+                                    />
+                    
+                                    <Select 
+                                        options={deviceOptions} 
+                                        value={deviceOptions.find(option => option.value === device)}
+                                        onChange={option => setDevice(option?.value || "")} 
+                                        placeholder="장치 선택"
+                                        noOptionsMessage={() => "장치가 없습니다!"}
+                                    />
+                    
+                                    <Select 
+                                        options={languageOptions} 
+                                        value={languageOptions.find(option => option.value === language)}
+                                        onChange={option => setLanguage(option?.value || "")} 
+                                        placeholder="언어 선택"
+                                    />
+                    
+                                    <input 
+                                        type="text"
+                                        value={path} 
+                                        readOnly 
+                                        className="input" 
+                                        placeholder="모델 경로 선택"
+                                    />
+                                    <div className='flex justify-between gap-2'>
+                                        <button 
+                                            onClick={handleBrowseModelPath}
+                                            className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
+                                        >
+                                            선택
+                                        </button>
+                                        <button
+                                            className="px-3 py-1 bg-yellow-100 rounded hover:bg-yellow-200"
+                                            onClick={() => setShowHuggingfaceDrawer(true)}
+                                        >
+                                            🤗 모델 탐색
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            )}
+                            
+                            {isAzureModel && (
+                                <motion.div
+                                    key="azure-form"
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                    transition={{ duration: 0.25 }}
+                                    className="space-y-3"
+                                >
+                                    <input
+                                        value={endpoint}
+                                        onChange={e => setEndpoint(e.target.value)}
+                                        className="input"
+                                        placeholder="엔드포인트 URL 입력"
+                                    />
+                                    <input
+                                        value={apiKey}
+                                        onChange={e => setApiKey(e.target.value)}
+                                        className="input"
+                                        type="password"
+                                        placeholder="API Key 입력"
+                                    />
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
                     </div>
-                    <div className="flex justify-end gap-2 mt-6">
+                    <div className="flex justify-end gap-2 mt-3">
                         <button
                             className="px-4 py-2 bg-gray-200 rounded font-MapoPeacefull hover:bg-gray-300"
                             onClick={() => {
@@ -199,6 +289,15 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
                     />
                 )}
             </AnimatePresence>
+
+            {/* 🔥 HuggingFaceModelDrawer 연결 */}
+            {showHuggingFaceDrawer && (
+                <HuggingFaceModelDrawer
+                    open={showHuggingFaceDrawer}
+                    onClose={() => setShowHuggingfaceDrawer(false)}
+                    onSelectModel={handleSelectModelFromHuggingface}
+                />
+            )}
         </>
     )
 }

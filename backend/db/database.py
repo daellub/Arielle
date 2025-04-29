@@ -4,6 +4,8 @@ import pymysql
 from .config import DB_CONFIG
 from datetime import datetime
 
+from backend.utils.encryption import encrypt
+
 def get_connection():
     return pymysql.connect(**DB_CONFIG)
 
@@ -43,9 +45,10 @@ def save_model_to_db(model_id, model_info, latency=None):
         conn = get_connection()
         with conn.cursor() as cursor:
             sql = """
-                INSERT INTO models (id, name, type, framework, device, language, path, status, loaded, latency, created_at, logo)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO models (id, name, type, framework, device, language, path, endpoint, apiKey, status, loaded, latency, created_at, logo)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
+            encrypted_apiKey = encrypt(model_info.apiKey) if model_info.apiKey else None
             cursor.execute(sql, (
                 model_id,
                 model_info.name,
@@ -54,6 +57,8 @@ def save_model_to_db(model_id, model_info, latency=None):
                 model_info.device,
                 model_info.language,
                 model_info.path,
+                model_info.endpoint,
+                encrypted_apiKey,
                 model_info.status,
                 0,  # loaded
 
@@ -127,7 +132,9 @@ def get_models_from_db():
     try:
         conn = get_connection()
         with conn.cursor(pymysql.cursors.DictCursor) as cursor:
-            sql = "SELECT id, name, type, framework, device, language, path, status, loaded, latency, created_at, logo FROM models"
+            sql = """
+                SELECT id, name, type, framework, device, language, path, endpoint, apiKey, status, loaded, latency, created_at, logo FROM models
+            """
             cursor.execute(sql)
             models = cursor.fetchall()
         return models  # 최신 모델 리스트 반환

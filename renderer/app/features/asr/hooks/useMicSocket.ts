@@ -4,6 +4,8 @@
 import { useEffect, useRef } from 'react'
 import { Socket } from 'socket.io-client'
 
+import { useSelectedModelStore } from '@/app/features/asr/store/useSelectedModelStore'
+
 interface MicOptions {
     socket: Socket
     deviceId?: string
