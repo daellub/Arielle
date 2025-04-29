@@ -13,6 +13,7 @@ class ModelRegister(BaseModel):
     status: Optional[str] = "idle"
     main: Optional[str] = ""
     endpoint: Optional[str] = ""
+    region: Optional[str] = ""
     apiKey: Optional[str] = ""
 
 class InferenceRequest(BaseModel):

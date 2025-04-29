@@ -85,20 +85,20 @@ class ModelManager:
             info = model['info']
             fw = info.framework.lower()
 
-            if fw == "openvino":
+            if fw == 'openvino':
                 openvino_genai.openvino.shutdown()
                 gc.collect()
-
                 model["instance"] = None
-                model["loaded"] = False
-                model["latency"] = None
-                update_model_loaded_status(model_id, False, None)
-                update_model_status(model_id, "idle")
-                print(f"[INFO] 모델 {info.name} 언로드 완료")
-                return True
-            else:
-                gc.collect()
-                print('언로딩 완료')
+                
+            elif fw == 'azure':
+                model["instance"] = None
+                
+            model["loaded"] = False
+            model["latency"] = None
+            update_model_loaded_status(model_id, False, None)
+            update_model_status(model_id, "idle")
+            print(f"[INFO] 모델 {info.name} 언로드 완료")
+            return True
         except Exception as e:
             print(f'[ERROR] 모델 언로드 실패: {e}')
             return False

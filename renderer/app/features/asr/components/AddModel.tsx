@@ -18,27 +18,61 @@ const modelOptions = [
     { value: "Meta", label: "Meta" },
     { value: "Google", label: "Google" },
     { value: "Azure", label: "Azure" },
-];
+]
 
 const libraryOptions = [
     { value: "OpenVINO", label: "OpenVINO" },
     { value: "PyTorch", label: "PyTorch" },
     { value: "Transformer", label: "Transformer" },
     { value: "TensorFlow", label: "Tensorflow" },
-];
+]
 
 const deviceOptions = [
     { value: "AUTO", label: "AUTO" },
     { value: "CPU", label: "CPU" },
     { value: "GPU", label: "GPU" },
     { value: "NPU", label: "NPU" },
-];
+]
 
 const languageOptions = [
     { value: "ko", label: "한국어 (ko)" },
     { value: "en", label: "영어 (en)" },
     { value: "jp", label: "일본어 (jp)" },
-];
+]
+
+// Azure 지역 설정
+const regionOptions = [
+    { value: "australiaeast", label: "Australia East" },
+    { value: "brazilsouth", label: "Brazil South" },
+    { value: "canadacentral", label: "Canada Central" },
+    { value: "centralindia", label: "Central India" },
+    { value: "centralus", label: "Central US" },
+    { value: "eastasia", label: "East Asia" },
+    { value: "eastus", label: "East US" },
+    { value: "eastus2", label: "East US 2" },
+    { value: "francecentral", label: "France Central" },
+    { value: "germanywestcentral", label: "Germany West Central" },
+    { value: "japaneast", label: "Japan East" },
+    { value: "japanwest", label: "Japan West" },
+    { value: "koreacentral", label: "Korea Central" },
+    { value: "northcentralus", label: "North Central US" },
+    { value: "northeurope", label: "North Europe" },
+    { value: "norwayeast", label: "Norway East" },
+    { value: "qatarcentral", label: "Qatar Central" },
+    { value: "southafricanorth", label: "South Africa North" },
+    { value: "southcentralus", label: "South Central US" },
+    { value: "southeastasia", label: "Southeast Asia" },
+    { value: "swedencentral", label: "Sweden Central" },
+    { value: "switzerlandnorth", label: "Switzerland North" },
+    { value: "switzerlandwest", label: "Switzerland West" },
+    { value: "uaenorth", label: "UAE North" },
+    { value: "uksouth", label: "UK South" },
+    { value: "westcentralus", label: "West Central US" },
+    { value: "westeurope", label: "West Europe" },
+    { value: "westus", label: "West US" },
+    { value: "westus2", label: "West US 2" },
+    { value: "westus3", label: "West US 3" },
+]
 
 interface AddModelProps {
     open: boolean
@@ -59,8 +93,10 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
     const [showHuggingFaceDrawer, setShowHuggingfaceDrawer] = useState(false)
 
     // Azure 설정
+    const [azureMode, setAzureMode] = useState<'endpoint' | 'region'>('endpoint')
     const isAzureModel = main === 'Azure'
     const [endpoint, setEndpoint] = useState('')
+    const [region, setRegion] = useState('')
     const [apiKey, setApiKey] = useState('')
 
     const resetForm = () => {
@@ -71,6 +107,7 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
         setLanguage('ko')
         setPath('')
         setEndpoint('')
+        setRegion('koreacentral')
         setApiKey('')
     }
 
@@ -99,7 +136,8 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
                     framework: "Azure",
                     device: "API",
                     language,
-                    endpoint,
+                    endpoint: azureMode === 'endpoint' ? endpoint : '',
+                    region: azureMode === 'region' ? region : '',
                     apiKey,
                     path: "",
                 }
@@ -241,18 +279,35 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
                                     className="space-y-3"
                                 >
                                     <input
-                                        value={endpoint}
-                                        onChange={e => setEndpoint(e.target.value)}
-                                        className="input"
-                                        placeholder="엔드포인트 URL 입력"
-                                    />
-                                    <input
                                         value={apiKey}
                                         onChange={e => setApiKey(e.target.value)}
                                         className="input"
                                         type="password"
                                         placeholder="API Key 입력"
                                     />
+                                    {azureMode === 'endpoint' ? (
+                                        <input
+                                            value={endpoint}
+                                            onChange={e => setEndpoint(e.target.value)}
+                                            className="input"
+                                            placeholder="엔드포인트 URL 입력"
+                                        />
+                                    ) : (
+                                        <Select
+                                            options={regionOptions}
+                                            value={regionOptions.find(opt => opt.value === region)}
+                                            onChange={option => setRegion(option?.value || '')}
+                                            placeholder="리전 선택"
+                                        />
+                                    )}
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-sm">엔드포인트</span>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" checked={azureMode === 'region'} onChange={() => setAzureMode(azureMode === 'endpoint' ? 'region' : 'endpoint')} className="sr-only peer" />
+                                            <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 dark:bg-gray-700 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                                        </label>
+                                        <span className="text-sm">리전</span>
+                                    </div>
                                 </motion.div>
                             )}
                         </AnimatePresence>

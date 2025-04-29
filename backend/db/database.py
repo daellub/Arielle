@@ -45,8 +45,8 @@ def save_model_to_db(model_id, model_info, latency=None):
         conn = get_connection()
         with conn.cursor() as cursor:
             sql = """
-                INSERT INTO models (id, name, type, framework, device, language, path, endpoint, apiKey, status, loaded, latency, created_at, logo)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO models (id, name, type, framework, device, language, path, endpoint, region, apiKey, status, loaded, latency, created_at, logo)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             encrypted_apiKey = encrypt(model_info.apiKey) if model_info.apiKey else None
             cursor.execute(sql, (
@@ -133,7 +133,7 @@ def get_models_from_db():
         conn = get_connection()
         with conn.cursor(pymysql.cursors.DictCursor) as cursor:
             sql = """
-                SELECT id, name, type, framework, device, language, path, endpoint, apiKey, status, loaded, latency, created_at, logo FROM models
+                SELECT id, name, type, framework, device, language, path, endpoint, region, apiKey, status, loaded, latency, created_at, logo FROM models
             """
             cursor.execute(sql)
             models = cursor.fetchall()

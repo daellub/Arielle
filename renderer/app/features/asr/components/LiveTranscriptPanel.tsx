@@ -67,7 +67,11 @@ export default function LiveTranscriptPanel() {
             setIsConnected(true)
             showNotification('Socket과 연결되었습니다.', 'success')
 
-            socket.emit('start_azure_mic', {})
+            if (selectedModel.framework === 'Azure') {
+                socket.emit('start_azure_mic', { model_id: selectedModel.id });
+            } else {
+                socket.emit('start_transcribe', { model_id: selectedModel.id });
+            }
             setIsRecording(true)
         })
 
@@ -98,12 +102,14 @@ export default function LiveTranscriptPanel() {
             return
         }
         if (socket) {
-            socket.disconnect()
+            if (selectedModel.framework === 'Azure') {
+                socket.emit('stop_azure_mic', {});
+            } else {
+                socket.emit('stop_transcribe', {});
+            }
+            setIsConnected(false);
+            setIsRecording(false);
         }
-
-        setIsConnected(false)
-        setIsRecording(false)
-        stopTranscript()
     }
 
     const handleReset = () => {

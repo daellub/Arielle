@@ -15,8 +15,8 @@ def register_model(model: ModelRegister):
     return {'status': 'registered', 'model_id': model_id}
 
 @router.post('/models/load/{model_id}')
-def load_model(model_id: str, device_name: str = Body(None)):
-    model_manager.load_model(model_id, device_name=device_name)
+def load_model(model_id: str):
+    model_manager.load_model(model_id)
     return {'status': 'loaded', 'model_id': model_id}
 
 @router.post('/models/unload/{model_id}')
