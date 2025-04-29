@@ -1,16 +1,16 @@
-// app/components/LiveTranscriptPanel.tsx
+// app/features/asr/components/LiveTranscriptPanel.tsx
 'use client'
 
 import { io, Socket } from 'socket.io-client'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { AnimatePresence } from 'motion/react'
+import axios from 'axios'
 
+import RecordingStatusIndicator from './RecordingStatusIndicator'
 import { useMicStore } from '@/app/features/asr/store/useMicStore'
 import { Transcript, useTranscriptStore } from '@/app/features/asr/store/useTranscriptStore'
 import { useSelectedModelStore } from '@/app/features/asr/store/useSelectedModelStore'
 import Notification from './Notification'
-
-let socket: Socket
 
 export default function LiveTranscriptPanel() {
     const { 
@@ -24,6 +24,7 @@ export default function LiveTranscriptPanel() {
 
     const { selectedModel } = useSelectedModelStore()
 
+    const [socket, setSocket] = useState<Socket | null>(null)
     const [isConnected, setIsConnected] = useState(false)
     const [isRecording, setIsRecording] = useState(false)
     const [notification, setNotification] = useState<{
@@ -42,51 +43,64 @@ export default function LiveTranscriptPanel() {
             return
         }
 
-        if (isConnected) {
-            showNotification('이미 연결된 상태입니다.', 'error')
+        if (isConnected || isRecording) {
+            showNotification('이미 녹음 중입니다.', 'error')
             return
         }
 
-        socket = io('http://localhost:8000', {
+        const newSocket = io('http://localhost:8000', {
             path: "/socket.io",
             transports: ['websocket'],
             autoConnect: false,
             withCredentials: true,
         })
 
-        socket.connect()
+        newSocket.connect()
 
-        socket.on('recognizing', (data: { text: string }) => {
+        newSocket.on('recognizing', (data: { text: string }) => {
             setTranscript(data.text)
         })
 
-        socket.on('recognized', (data: { text: string}) => {
+        newSocket.on('recognized', async (data: { text: string}) => {
             finalizeTranscript()
+
+            try {
+                await axios.post('http://localhost:8000/asr/save/result', {
+                    model: selectedModel?.name ?? 'UnknownModel',
+                    text: data.text,
+                    language: 'ko',
+                })
+            } catch (error) {
+                console.error('[DB] 저장 실패: ', error)
+            }
         })
 
-        socket.on('connect', async () => {
+        newSocket.on('connect', async () => {
             // console.log('[SOCKET] 연결 성공')
             setIsConnected(true)
             showNotification('Socket과 연결되었습니다.', 'success')
 
             if (selectedModel.framework === 'Azure') {
-                socket.emit('start_azure_mic', { model_id: selectedModel.id });
+                newSocket.emit('start_azure_mic', { model_id: selectedModel.id });
             } else {
-                socket.emit('start_transcribe', { model_id: selectedModel.id });
+                newSocket.emit('start_transcribe', { model_id: selectedModel.id });
             }
             setIsRecording(true)
         })
 
-        socket.on('disconnect', () => {
+        newSocket.on('disconnect', () => {
             // console.log('[SOCKET] 연결 종료')
             setIsConnected(false)
+            setIsRecording(false)
             showNotification('Socket과 연결을 종료했습니다.', 'success')
         })
 
-        socket.on('error', (err) => {
+        newSocket.on('error', (err) => {
             // console.error('[SOCKET] 오류 발생: ', err)
             showNotification('Socket과 연결 중 오류가 발생했습니다.', 'error')
         })
+
+        setSocket(newSocket)
     }
 
     const handleStop = () => {
@@ -94,8 +108,11 @@ export default function LiveTranscriptPanel() {
             showNotification('모델이 선택되지 않았거나 종료된 상태입니다.', 'info')
             return
         }
+        if (!isRecording) {
+            showNotification('현재 녹음 중이 아닙니다.', 'info')
+            return
+        }
         if (socket) {
-            // console.log('소켓 연결 상태:', socket.connected)
             if (selectedModel.framework === 'Azure') {
                 socket.emit('stop_azure_mic', {});
             } else {
@@ -103,6 +120,10 @@ export default function LiveTranscriptPanel() {
             }
             setIsConnected(false);
             setIsRecording(false);
+
+            socket.disconnect()
+
+            setSocket(null)
         }
         showNotification('Socket과 연결을 종료했습니다.', 'success')
     }
@@ -112,8 +133,17 @@ export default function LiveTranscriptPanel() {
         clearTranscript()
     }
 
+    useEffect(() => {
+        return () => {
+            if (socket && socket.connected) {
+                socket.disconnect()
+            }
+        }
+    }, [])
+
     return (
         <>
+            <RecordingStatusIndicator isRecording={isRecording} />
             <div className='max-w-[600px] min-w-[600px] max-h-[250px] p-7 rounded-[30px] bg-white shadow-md border border-gray-200'>
                 <div className='flex items-center justify-between mb-3'>
                     <span className='text-[18px] font-semibold text-black'>LIVE Transcribe</span>
@@ -136,7 +166,7 @@ export default function LiveTranscriptPanel() {
                 <div className='text-sm text-neutral-500'>
                     <div className='mb-1'>인식 로그</div>
                     <ul className='space-y-1 pl-3 list-disc'>
-                        {history.map((item, index) => (
+                        {history.slice(-1).map((item, index) => (
                             <li key={index}>
                                 '{item.text}' ({item.lang}) - {item.timestamp}
                             </li>

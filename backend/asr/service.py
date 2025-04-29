@@ -5,7 +5,7 @@ import numpy as np
 
 from backend.asr.model_manager import model_manager
 from backend.asr.schemas import ModelRegister
-from backend.db.database import delete_model_from_db, get_models_from_db
+from backend.db.database import delete_model_from_db, get_models_from_db, save_result_to_db
 
 router = APIRouter()
 
@@ -25,6 +25,15 @@ def unload_model(model_id: str):
     return {
         'status': 'success' if ok else 'skipped', 'model_id': model_id
     }
+
+@router.post('/save/result')
+async def save_transcription(
+    model: str = Body(...),
+    text: str = Body(...),
+    language: str = Body('ko')
+):
+    save_result_to_db(model_name=model, text=text, language=language)
+    return {'status': 'saved'}
 
 @router.get('/models')
 def list_models():
@@ -72,7 +81,7 @@ async def websocket_inference(websocket: WebSocket, model_id: str):
             print(f'[INFO] Whisper WebSocket 종료: {model_id}')
 
     elif fw == 'azure':
-        print('구현 예정')
+        print('Azure API는 Socket에서 직접 처리합니다.')
 
     else:
         await websocket.send_text('error: 지원하지 않는 모델 프레임워크입니다.')

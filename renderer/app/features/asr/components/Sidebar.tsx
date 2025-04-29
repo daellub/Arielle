@@ -1,4 +1,4 @@
-// components/Sidebar.tsx
+// app/features/asr/components/Sidebar.tsx
 'use client'
 import Image from 'next/image'
 import React, {useState} from 'react'

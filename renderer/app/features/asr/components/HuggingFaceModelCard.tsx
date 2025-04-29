@@ -1,4 +1,4 @@
-// app/components/HuggingFaceModelCard.tsx
+// app/features/asr/components/HuggingFaceModelCard.tsx
 'use client'
 
 import { HuggingFaceModel, generateModelDescription } from '@/app/features/asr/utils/huggingFaceAPI'

@@ -1,4 +1,4 @@
-// app/components/MicStatus.tsx
+// app/features/asr/components/MicStatus.tsx
 'use client'
 
 import React, { useEffect, useState } from 'react'

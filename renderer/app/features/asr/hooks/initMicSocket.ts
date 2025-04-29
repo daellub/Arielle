@@ -1,4 +1,4 @@
-// features/asr/hooks/initMicSocket.ts
+// app/features/asr/hooks/initMicSocket.ts
 
 import { Socket } from 'socket.io-client'
 
