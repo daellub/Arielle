@@ -2,7 +2,7 @@
 'use client'
 
 import { io, Socket } from 'socket.io-client'
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { AnimatePresence } from 'motion/react'
 
 import { useMicStore } from '@/app/features/asr/store/useMicStore'
@@ -14,21 +14,13 @@ let socket: Socket
 
 export default function LiveTranscriptPanel() {
     const { 
-        setTranscript: addTranscript,
+        setTranscript,
         stopTranscript,
+        finalizeTranscript,
         clearTranscript,
+        currentTranscript,
         history
     } = useTranscriptStore()
-
-    // const {
-    //     deviceId,
-    //     sampleRate,
-    //     volumeGain,
-    //     noiseSuppression,
-    //     echoCancellation,
-    //     useVAD,
-    //     silenceTimeout
-    // } = useMicStore()
 
     const { selectedModel } = useSelectedModelStore()
 
@@ -58,12 +50,22 @@ export default function LiveTranscriptPanel() {
         socket = io('http://localhost:8000', {
             path: "/socket.io",
             transports: ['websocket'],
-            autoConnect: true,
+            autoConnect: false,
             withCredentials: true,
         })
 
+        socket.connect()
+
+        socket.on('recognizing', (data: { text: string }) => {
+            setTranscript(data.text)
+        })
+
+        socket.on('recognized', (data: { text: string}) => {
+            finalizeTranscript()
+        })
+
         socket.on('connect', async () => {
-            console.log('[SOCKET] 연결 성공')
+            // console.log('[SOCKET] 연결 성공')
             setIsConnected(true)
             showNotification('Socket과 연결되었습니다.', 'success')
 
@@ -75,23 +77,14 @@ export default function LiveTranscriptPanel() {
             setIsRecording(true)
         })
 
-        socket.on('transcript', (data: { text: string }) => {
-            const newTranscript: Transcript = {
-                text: data.text,
-                lang: 'ko',
-                timestamp: new Date().toLocaleTimeString()
-            }
-            addTranscript(newTranscript)
-        })
-
         socket.on('disconnect', () => {
-            console.log('[SOCKET] 연결 종료')
+            // console.log('[SOCKET] 연결 종료')
             setIsConnected(false)
             showNotification('Socket과 연결을 종료했습니다.', 'success')
         })
 
         socket.on('error', (err) => {
-            console.error('[SOCKET] 오류 발생: ', err)
+            // console.error('[SOCKET] 오류 발생: ', err)
             showNotification('Socket과 연결 중 오류가 발생했습니다.', 'error')
         })
     }
@@ -102,6 +95,7 @@ export default function LiveTranscriptPanel() {
             return
         }
         if (socket) {
+            // console.log('소켓 연결 상태:', socket.connected)
             if (selectedModel.framework === 'Azure') {
                 socket.emit('stop_azure_mic', {});
             } else {
@@ -110,6 +104,7 @@ export default function LiveTranscriptPanel() {
             setIsConnected(false);
             setIsRecording(false);
         }
+        showNotification('Socket과 연결을 종료했습니다.', 'success')
     }
 
     const handleReset = () => {
@@ -134,7 +129,7 @@ export default function LiveTranscriptPanel() {
                 <div className='mb-4'>
                     <div className='text-[14px] text-black mb-1'>실시간 텍스트</div>
                     <div className='text-[16px font-mono text-neutral-600'>
-                        {isConnected ? '✅ 실시간 텍스트 수신 중...' : '🟡 연결되지 않음. 시작을 눌러주세요.'}
+                        {currentTranscript ? currentTranscript.text : (isConnected ? '✅ 실시간 텍스트 수신 중...' : '🟡 연결되지 않음. 시작을 눌러주세요.')}
                     </div>
                 </div>
 

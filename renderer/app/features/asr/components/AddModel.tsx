@@ -115,7 +115,10 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
         const isFieldEmpty = (field: string | undefined) => !field || field.trim() === ''
 
         if (isAzureModel) {
-            if (isFieldEmpty(name) || isFieldEmpty(main) || isFieldEmpty(endpoint) || isFieldEmpty(apiKey)) {
+            if (isFieldEmpty(name) || isFieldEmpty(main) || isFieldEmpty(apiKey) ||
+                (azureMode === 'endpoint' && isFieldEmpty(endpoint)) ||
+                (azureMode === 'region' && isFieldEmpty(region))
+        ) {
                 showNotification("모든 필드를 입력해주세요!", 'info');
                 return;
             }

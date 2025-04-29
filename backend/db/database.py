@@ -58,6 +58,7 @@ def save_model_to_db(model_id, model_info, latency=None):
                 model_info.language,
                 model_info.path,
                 model_info.endpoint,
+                model_info.region,
                 encrypted_apiKey,
                 model_info.status,
                 0,  # loaded

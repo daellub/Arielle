@@ -8,7 +8,7 @@ from backend.sio import sio
 from backend.asr.model_manager import model_manager
 from backend.utils.encryption import decrypt
 
-# sid별 SpeechRecognizer 저장
+# sid 별 SpeechRecognizer 및 done_future 저장
 recognizers = {}
 
 # Whisper / HuggingFace용 로컬 모델 처리 메커니즘
@@ -32,7 +32,15 @@ async def start_transcribe(sid, data):
 # Azure API용 모델 메커니즘
 @sio.on('start_azure_mic')
 async def start_azure_mic(sid, data):
-    print(f'[SOCKET] start_azure_mic 요청 받음 from {sid}')
+    # print(f'[SOCKET] start_azure_mic 요청 받음 from {sid}')
+
+    # 이전 세션 삭제
+    if sid in recognizers:
+        # print(f"[INFO] 이전 recognizer 세션 삭제: {sid}")
+        recognizer = recognizers[sid]['recognizer']
+        recognizer.stop_continuous_recognition()
+        del recognizers[sid]
+
     model_id = data.get('model_id')
 
     if not model_id or model_id not in model_manager.models:
@@ -45,18 +53,17 @@ async def start_azure_mic(sid, data):
     framework = info.framework.lower()
 
     if instance is None and framework != 'azure':
-        await sio.emit('transcript', {'text': '❌ 모델이 로드되지 않아 사용할 수 없습니다.'}, to=sid)
-        return  
+        return await sio.emit('transcript', {'text': '❌ 모델이 로드되지 않아 사용할 수 없습니다.'}, to=sid)
     
-    try:
+    if not getattr(info, '_decrypted', False):
         info.apiKey = decrypt(info.apiKey)
-    except Exception as e:
-        await sio.emit('transcript', {'text': f'❌ API Key 복호화 실패: {e}'}, to=sid)
-        return
-    
+        setattr(info, '_decrypted', True)
     await recognized_from_microphone(sid, info)
 
 async def recognized_from_microphone(sid: str, model_info):
+    if sid in recognizers:
+        del recognizers[sid]
+    
     apiKey = model_info.apiKey
     endpoint = model_info.endpoint
     region = model_info.region
@@ -82,29 +89,32 @@ async def recognized_from_microphone(sid: str, model_info):
     loop = asyncio.get_running_loop()
     done_future = loop.create_future()
 
-    recognizers[sid] = speech_recognizer
+    recognizers[sid] = { 
+        'recognizer': speech_recognizer,
+        'done_future': done_future,    
+    }
 
     def recognizing_cb(evt):
         text = evt.result.text
         if text:
-            print(f'[Recognizing] {text}')
+            asyncio.run_coroutine_threadsafe(
+                sio.emit('recognizing', {'text': text}, to=sid),
+                loop
+            )
     
     def recognized_cb(evt):
         text = evt.result.text
         if text:
-            print(f'[Recognized] {text}')
             asyncio.run_coroutine_threadsafe(
-                sio.emit('transcript', {'text': text}, to=sid),
+                sio.emit('recognized', {'text': text}, to=sid),
                 loop
             )
 
     def session_stopped_cb(evt):
-        print('[Session Stopped]')
         if not done_future.done():
             loop.call_soon_threadsafe(done_future.set_result, True)
 
     def canceled_cb(evt):
-        print('[Canceled]', evt)
         if not done_future.done():
             loop.call_soon_threadsafe(done_future.set_result, True)
     
@@ -113,13 +123,12 @@ async def recognized_from_microphone(sid: str, model_info):
     speech_recognizer.session_stopped.connect(session_stopped_cb)
     speech_recognizer.canceled.connect(canceled_cb)
 
-    print("🎙 Azure 마이크 인식 시작")
-    await sio.emit('transcript', {'text': '🎙 Azure STT 스트리밍 준비 완료'}, to=sid)
+    await sio.emit('transcript', {'text': '🎙 Azure 스트리밍 준비 완료'}, to=sid)
 
     speech_recognizer.start_continuous_recognition()
     await done_future
     speech_recognizer.stop_continuous_recognition()
-    print("🎙 Azure 마이크 인식 종료")
+    await sio.emit('transcript', {'text': '🎙 Azure 스트리밍 종료'}, to=sid)
 
     if sid in recognizers:
         del recognizers[sid]
@@ -137,11 +146,11 @@ async def audio_chunk(sid, data):
         audio_np = np.array(data, dtype=np.float32)
 
         texts = model_manager.infer(model_id, audio_np, language="<|ko|>")
-        print("[DEBUG] 전사 결과: ", texts)
+        # print("[DEBUG] 전사 결과: ", texts)
         if texts:
             await sio.emit('transcript', {'text': texts[0]}, to=sid)
     except Exception as e:
-        print(f"[ERROR] audio_chunk 처리 중 오류: {e}")
+        # print(f"[ERROR] audio_chunk 처리 중 오류: {e}")
         await sio.emit('transcript', {'text': '❌ 전사 실패'}, to=sid)
 
 @sio.on('stop_transcribe')
@@ -151,11 +160,18 @@ async def stop_transcribe(sid):
 # Azure 전사 중단
 @sio.on('stop_azure_mic')
 async def stop_azure_mic(sid, data):
-    print(f'[SOCKET] stop_azure_mic 요청 받음 from {sid}')
-    recognizer = recognizers.get(sid)
-    if recognizer:
+    entry = recognizers.get(sid)
+    if entry:
+        recognizer = entry['recognizer']
+        done_future = entry['done_future']
+
+        if not done_future.done():
+            done_future.set_result(True)
+            #print(f"[INFO] SpeechRecognizer 중지 완료 for {sid}")
+        else:
+            print(f"[INFO] 이미 done 상태 for {sid}")
+
         recognizer.stop_continuous_recognition()
-        print(f"[INFO] SpeechRecognizer 중지 완료 for {sid}")
         del recognizers[sid]
     else:
         print(f"[WARN] stop_azure_mic: recognizer 없음 for {sid}")
