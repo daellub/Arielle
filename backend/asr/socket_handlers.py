@@ -7,6 +7,7 @@ import numpy as np
 from backend.sio import sio
 from backend.asr.model_manager import model_manager
 from backend.utils.encryption import decrypt
+from backend.utils.device_resolver import resolve_input_device_id
 
 # sid 별 SpeechRecognizer 및 done_future 저장
 recognizers = {}
@@ -42,6 +43,7 @@ async def start_azure_mic(sid, data):
         del recognizers[sid]
 
     model_id = data.get('model_id')
+    device_label = data.get('deviceLabel')
 
     if not model_id or model_id not in model_manager.models:
         await sio.emit('transcript', {'text': '❌ 모델을 찾을 수 없습니다.'}, to=sid)
@@ -58,9 +60,10 @@ async def start_azure_mic(sid, data):
     if not getattr(info, '_decrypted', False):
         info.apiKey = decrypt(info.apiKey)
         setattr(info, '_decrypted', True)
-    await recognized_from_microphone(sid, info)
 
-async def recognized_from_microphone(sid: str, model_info):
+    await recognized_from_microphone(sid, info, device_label=device_label)
+
+async def recognized_from_microphone(sid: str, model_info, device_label=None):
     if sid in recognizers:
         del recognizers[sid]
     
@@ -80,7 +83,18 @@ async def recognized_from_microphone(sid: str, model_info):
     
     speech_config.speech_recognition_language = 'ko-KR'
 
-    audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
+    if device_label and device_label != 'default':
+        device_id = resolve_input_device_id(device_label)
+        if device_id:
+            print(f'[INFO] 선택된 장치 ID: {device_id}')
+            audio_config = speechsdk.audio.AudioConfig(use_default_microphone=False, device_name=device_id)
+        else:
+            print(f'[WARN] 지정된 장치를 찾을 수 없어 기본 마이크를 사용합니다.')
+            audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
+    else:
+        print(f'[INFO] 기본 마이크 사용')
+        audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
+
     speech_recognizer = speechsdk.SpeechRecognizer(
         speech_config=speech_config,
         audio_config=audio_config

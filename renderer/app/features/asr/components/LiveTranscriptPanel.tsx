@@ -22,6 +22,8 @@ export default function LiveTranscriptPanel() {
         history
     } = useTranscriptStore()
 
+    const { deviceId, deviceName } = useMicStore()
+
     const { selectedModel } = useSelectedModelStore()
 
     const [socket, setSocket] = useState<Socket | null>(null)
@@ -81,7 +83,16 @@ export default function LiveTranscriptPanel() {
             showNotification('Socket과 연결되었습니다.', 'success')
 
             if (selectedModel.framework === 'Azure') {
-                newSocket.emit('start_azure_mic', { model_id: selectedModel.id });
+                const payload: any = {
+                    model_id: selectedModel.id,
+                }
+
+                if (deviceId && deviceId !== 'default') {
+                    payload.deviceLabel = deviceName
+                }
+
+                newSocket.emit('start_azure_mic', payload)
+                console.log('🔵 start_azure_mic payload:', payload)
             } else {
                 newSocket.emit('start_transcribe', { model_id: selectedModel.id });
             }
