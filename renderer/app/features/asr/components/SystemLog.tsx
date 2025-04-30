@@ -12,7 +12,7 @@ interface LogEntry {
 const initialLogs: LogEntry[] = [
     { timestamp: '02:34', type: 'PROCESS', message: 'Processing Audio Recognize...' },
     { timestamp: '02:35', type: 'PROCESS', message: 'Listening Audio. . . . .' },
-    { timestamp: '02:35', type: 'RESULT', message: 'Audio Transcribe Successful! (language="KO")' },
+    { timestamp: '02:35', type: 'RESULT', message: 'Audio Transcribe Successful! (language="ko")' },
     { timestamp: '02:36', type: 'DB', message: 'Saving Result Metadata in DB' },
     { timestamp: '02:37', type: 'EXAMPLE', message: '예시 로그 데이터입니다. 와랄랄라' },
 ]
