@@ -187,7 +187,7 @@ export default function Models() {
     return (
         <>
             <section className={clsx(
-                "relative w-full max-w-[300px] h-screen min-h-[680px] max-h-[680px] ml-[80px] mt-[20px] px-6 py-6 bg-white rounded-lg shadow-md transition-all"
+                "relative w-full min-w-[300px] max-w-[300px] h-screen min-h-[680px] max-h-[680px] max-h-[680px] ml-[80px] mt-[20px] px-6 py-6 bg-white rounded-lg shadow-md transition-all"
             )}>
                 <div className='flex items-center justify-between mb-4'>
                     <h2 className="text-xl text-black font-MapoPeacefull">Models</h2>

@@ -45,6 +45,11 @@ export default function LiveTranscriptPanel() {
             return
         }
 
+        if (!deviceId) {
+            showNotification('사용할 마이크를 선택해 주세요!', 'info')
+            return
+        }
+
         if (isConnected || isRecording) {
             showNotification('이미 녹음 중입니다.', 'error')
             return

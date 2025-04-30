@@ -5,6 +5,8 @@ import Sidebar from '@/app/features/asr/components/Sidebar'
 import Models from '@/app/features/asr/components/Models'
 import MicStatus from '@/app/features/asr/components/MicStatus'
 import LiveTranscriptPanel from '@/app/features/asr/components/LiveTranscriptPanel'
+import SystemStatus from './features/asr/components/Status'
+import SystemLog from './features/asr/components/SystemLog'
 
 import { useMicInputLevel } from '@/app/features/asr/hooks/useMicInputLevel'
 import { useMicStore } from '@/app/features/asr/store/useMicStore'
@@ -40,6 +42,10 @@ export default function Home() {
                 <div className='flex gap-4'>
                     <MicStatus />
                     <LiveTranscriptPanel />
+                </div>
+                <div className='flex gap-4'>
+                    <SystemStatus />
+                    <SystemLog />
                 </div>
             </div>
         </div>
