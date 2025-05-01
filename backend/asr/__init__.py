@@ -1,7 +1,6 @@
 # backend/asr/__init__.py
 
 from typing import Dict
-from openvino_genai import WhisperPipeline
 
 model_registry: Dict[str, dict] = {}
 

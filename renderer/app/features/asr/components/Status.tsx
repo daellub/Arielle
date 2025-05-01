@@ -12,7 +12,7 @@ const statusItems: StatusItem[] = [
     { label: '데이터베이스 정상 작동 중', active: true },
     { label: 'ASR 모델 정상 작동 중', active: true },
     { label: '마이크 인식 시스템 작동 중', active: true },
-    { label: '하드웨어 정상 작동 중', active: true },
+    { label: '하드웨어 정상 작동 중', active: false },
 ]
 
 export default function SystemStatus() {
@@ -30,15 +30,15 @@ export default function SystemStatus() {
             </div>
 
             {/* 상태 리스트 */} 
-            <div className="space-y-8 text-sm text-black text-right">
+            <div className="space-y-7 text-sm text-black">
                 {statusItems.map((item, idx) => (
-                    <div key={idx} className='flex items-center justify-between'>
+                    <div key={idx} className='flex items-center'>
                         <span 
-                            className={`w-3 h-3 rounded-full ${
+                            className={`w-3 h-3 rounded-full mr-2 ${
                                 item.active ? 'bg-emerald-400' : 'bg-red-400'
                             }`}
                         />
-                        <span>{item.label}</span>
+                        <span className='text-[15px] font-omyu_pretty text-right w-full'>{item.label}</span>
                     </div>
                 ))}
             </div>
