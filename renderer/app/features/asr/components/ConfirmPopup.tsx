@@ -41,7 +41,7 @@ export default function ConfirmPopup({
                         className='bg-white rounded-xl shadow-xl p-6 w-[320px] max-w-[90%] text-center'
                     >
                         <h3 className="text-lg font-bold mb-2 text-black">{title}</h3>
-                        <p className='text-sm text-gray-600 mb-4'>{description}</p>
+                        <p className='text-sm text-gray-600 mb-4 whitespace-pre-line'>{description}</p>
 
                         <div className='flex justify-center gap-3'>
                             <button

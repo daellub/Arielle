@@ -45,7 +45,7 @@ def save_model_to_db(model_id, model_info, latency=None):
         conn = get_connection()
         with conn.cursor() as cursor:
             sql = """
-                INSERT INTO models (id, name, type, framework, device, language, path, endpoint, region, apiKey, status, loaded, latency, created_at, logo)
+                INSERT INTO asr_models (id, name, type, framework, device, language, path, endpoint, region, apiKey, status, loaded, latency, created_at, logo)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             encrypted_apiKey = encrypt(model_info.apiKey) if model_info.apiKey else None
@@ -80,7 +80,7 @@ def delete_model_from_db(model_id: str):
     try:
         conn = get_connection()
         with conn.cursor() as cursor:
-            sql = "DELETE FROM models WHERE id = %s"
+            sql = "DELETE FROM asr_models WHERE id = %s"
             cursor.execute(sql, (model_id,))
         conn.commit()
         print("\033[94m" + "[DB] 모델이 삭제되었습니다.\n")
@@ -96,7 +96,7 @@ def update_model_loaded_status(model_id: str, loaded: bool, latency: float = Non
         conn = get_connection()
         with conn.cursor() as cursor:
             sql = """
-                UPDATE models
+                UPDATE asr_models
                 SET loaded = %s, latency = %s
                 WHERE id = %s
             """
@@ -115,7 +115,7 @@ def update_model_status(model_id: str, status: str):
         conn = get_connection()
         with conn.cursor() as cursor:
             sql = """
-                UPDATE models
+                UPDATE asr_models
                 SET status = %s
                 WHERE id = %s
             """
@@ -134,7 +134,7 @@ def get_models_from_db():
         conn = get_connection()
         with conn.cursor(pymysql.cursors.DictCursor) as cursor:
             sql = """
-                SELECT id, name, type, framework, device, language, path, endpoint, region, apiKey, status, loaded, latency, created_at, logo FROM models
+                SELECT id, name, type, framework, device, language, path, endpoint, region, apiKey, status, loaded, latency, created_at, logo FROM asr_models
             """
             cursor.execute(sql)
             models = cursor.fetchall()
@@ -142,6 +142,22 @@ def get_models_from_db():
     except Exception as e:
         print("\033[91m" + f"[ERROR] {e}" + "\033[0m")
         return []
+    finally:
+        if conn:
+            conn.close()
+
+def save_log_to_db(log_type: str, message: str, source: str = 'SYSTEM'):
+    conn = None
+    try:
+        print(f'[DEBUG] log_type={log_type}, source={source} ({len(source)}), message={message}')
+        conn = get_connection()
+        with conn.cursor() as cursor:
+            sql = "INSERT INTO asr_logs (type, source, message) VALUES (%s, %s, %s)"
+            cursor.execute(sql, (log_type, source, message))
+        conn.commit()
+        print(f'[LOG] {log_type} | {source} | {message}')
+    except Exception as e:
+        print(f'[ERROR] 로그 저장 실패: {e}')
     finally:
         if conn:
             conn.close()

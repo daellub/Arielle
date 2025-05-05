@@ -1,0 +1,21 @@
+/* 스크롤 컨테이너: 내부 로그 전체를 감싸는 div */
+.scrollContainer {
+    max-height: 50vh;  /* 또는 원하는 고정값 */
+    overflow-y: auto;
+    background-color: #f8fafd;
+    padding: 0.75rem 1rem; /* tailwind px-4 py-3와 동일 */
+    border-radius: 0.5rem;
+    scrollbar-width: thin;
+    scrollbar-color: #52525b transparent;
+    scrollbar-gutter: stable;
+}
+
+/* WebKit 기반 스크롤바 커스터마이징 */
+  /* 스크롤바 커스터마이징(Optional) */
+.scrollContainer::-webkit-scrollbar {
+    width: 6px;
+}
+.scrollContainer::-webkit-scrollbar-thumb {
+    background-color: rgba(0,0,0,0.2);
+    border-radius: 3px;
+}

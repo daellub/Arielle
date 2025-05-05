@@ -1,3 +1,5 @@
 node_modules
 whisper-medium-int8
+.hf_cache
 .env
+MCP_Test

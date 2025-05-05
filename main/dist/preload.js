@@ -49,5 +49,8 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
                     return [2 /*return*/, result];
             }
         });
-    }); }
+    }); },
+    openPath: function (path) {
+        return electron_1.shell.openPath(path);
+    }
 });

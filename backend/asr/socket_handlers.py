@@ -5,6 +5,7 @@ import azure.cognitiveservices.speech as speechsdk
 import numpy as np
 
 from backend.sio import sio
+from backend.db.database import save_log_to_db
 from backend.asr.model_manager import model_manager
 from backend.utils.encryption import decrypt
 from backend.utils.device_resolver import resolve_input_device_id
@@ -33,6 +34,7 @@ async def start_transcribe(sid, data):
 # Azure API용 모델 메커니즘
 @sio.on('start_azure_mic')
 async def start_azure_mic(sid, data):
+    save_log_to_db("PROCESS", "Mic started capturing audio", "MIC")
     # print(f'[SOCKET] start_azure_mic 요청 받음 from {sid}')
 
     # 이전 세션 삭제
@@ -64,6 +66,8 @@ async def start_azure_mic(sid, data):
     await recognized_from_microphone(sid, info, device_label=device_label)
 
 async def recognized_from_microphone(sid: str, model_info, device_label=None):
+    save_log_to_db("PROCESS", "Audio stream started", "MIC")
+
     if sid in recognizers:
         del recognizers[sid]
     
@@ -89,6 +93,7 @@ async def recognized_from_microphone(sid: str, model_info, device_label=None):
             print(f'[INFO] 선택된 장치 ID: {device_id}')
             audio_config = speechsdk.audio.AudioConfig(use_default_microphone=False, device_name=device_id)
         else:
+            save_log_to_db("ERROR", "No input device detected", "MIC")
             print(f'[WARN] 지정된 장치를 찾을 수 없어 기본 마이크를 사용합니다.')
             audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
     else:
@@ -111,6 +116,7 @@ async def recognized_from_microphone(sid: str, model_info, device_label=None):
     def recognizing_cb(evt):
         text = evt.result.text
         if text:
+            
             asyncio.run_coroutine_threadsafe(
                 sio.emit('recognizing', {'text': text}, to=sid),
                 loop
@@ -119,19 +125,25 @@ async def recognized_from_microphone(sid: str, model_info, device_label=None):
     def recognized_cb(evt):
         text = evt.result.text
         if text:
+            save_log_to_db("RESULT", "Azure Audio Transcribe Successful.", "MODEL")
             asyncio.run_coroutine_threadsafe(
                 sio.emit('recognized', {'text': text}, to=sid),
                 loop
             )
+        else:
+            save_log_to_db("ERROR", "Transcription failed: No Match", "MODEL")
 
     def session_stopped_cb(evt):
         if not done_future.done():
             loop.call_soon_threadsafe(done_future.set_result, True)
 
     def canceled_cb(evt):
+        save_log_to_db("ERROR", "Transcription canceled", "MODEL")
         if not done_future.done():
             loop.call_soon_threadsafe(done_future.set_result, True)
     
+    save_log_to_db("PROCESS", "Azure transcription started", "MODEL")
+
     speech_recognizer.recognizing.connect(recognizing_cb)
     speech_recognizer.recognized.connect(recognized_cb)
     speech_recognizer.session_stopped.connect(session_stopped_cb)
@@ -141,6 +153,7 @@ async def recognized_from_microphone(sid: str, model_info, device_label=None):
 
     speech_recognizer.start_continuous_recognition()
     await done_future
+    save_log_to_db("PROCESS", "Audio stream stopped after silence", "MIC")
     speech_recognizer.stop_continuous_recognition()
     await sio.emit('transcript', {'text': '🎙 Azure 스트리밍 종료'}, to=sid)
 

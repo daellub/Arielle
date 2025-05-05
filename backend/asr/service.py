@@ -5,7 +5,7 @@ import numpy as np
 
 from backend.asr.model_manager import model_manager
 from backend.asr.schemas import ModelRegister
-from backend.db.database import delete_model_from_db, get_models_from_db, save_result_to_db
+from backend.db.database import delete_model_from_db, get_models_from_db, save_result_to_db, save_log_to_db
 
 router = APIRouter()
 
@@ -17,11 +17,28 @@ def register_model(model: ModelRegister):
 @router.post('/models/load/{model_id}')
 def load_model(model_id: str):
     model_manager.load_model(model_id)
+
+    model_info = model_manager.models[model_id]['info']
+    save_log_to_db(
+        log_type='INFO',
+        message=f'Model {model_info.name} loaded (device={model_info.device})',
+        source='MODEL'
+    )
+
     return {'status': 'loaded', 'model_id': model_id}
 
 @router.post('/models/unload/{model_id}')
 def unload_model(model_id: str):
     ok = model_manager.unload_model(model_id)
+
+    if ok:
+        model_info = model_manager.models[model_id]['info']
+        save_log_to_db(
+            log_type="INFO",
+            message=f"Model {model_info.name} unloaded",
+            source="MODEL"
+        )
+
     return {
         'status': 'success' if ok else 'skipped', 'model_id': model_id
     }
@@ -32,8 +49,21 @@ async def save_transcription(
     text: str = Body(...),
     language: str = Body('ko')
 ):
-    save_result_to_db(model_name=model, text=text, language=language)
-    return {'status': 'saved'}
+    try:
+        save_result_to_db(model_name=model, text=text, language=language)
+        save_log_to_db(
+            log_type='DB',
+            message=f'Saved transcription result to DB (model={model})',
+            source='BACKEND'
+        )
+        return {'status': 'saved'}
+    except Exception as e:
+        save_log_to_db(
+            log_type='ERROR',
+            message=f'DB Save Failed: {str(e)}',
+            source='BACKEND'
+        )
+        raise
 
 @router.get('/models')
 def list_models():
@@ -69,6 +99,7 @@ async def websocket_inference(websocket: WebSocket, model_id: str):
     fw = entry["info"].framework.lower()
 
     if fw == 'openvino':
+        save_log_to_db("INFO", f"Whisper WebSocket opened: model_id={model_id}", "MODEL")
         await websocket.send_text('🎙 Whisper 전사 준비 완료')
         try:
             while True:

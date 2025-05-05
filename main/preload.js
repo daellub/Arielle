@@ -49,5 +49,11 @@ electron_1.contextBridge.exposeInMainWorld('electronAPI', {
                     return [2 /*return*/, result];
             }
         });
-    }); }
+    }); },
+    openPath: async (path) => {
+        return await electron_1.ipcRenderer.invoke("shell:open-path", path);
+    },
+    copyToClipboard: async (text) => {
+        return await electron_1.ipcRenderer.invoke("clipboard:copy", text);
+    }
 });

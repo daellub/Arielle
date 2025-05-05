@@ -20,7 +20,7 @@ function getAvatarUrl(model: HuggingFaceModel): string {
 export default function HuggingFaceModelCard({ model, onSelect }: HuggingFaceModelCardProps) {
     return (
         <div
-            className='bg-white border rounded-xl shadow-md hover:shadow-lg transition-all overflow-hidden cursor-pointer'
+            className='bg-white border border-gray-200 rounded-xl shadow-md hover:shadow-lg transition-all overflow-hidden cursor-pointer'
             onClick={() => onSelect(model)}
         >
             {model.cardData?.thumbnail && (

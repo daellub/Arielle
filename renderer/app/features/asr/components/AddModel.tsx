@@ -3,7 +3,7 @@
 
 import axios from 'axios'
 import clsx from 'clsx'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Select from 'react-select'
 import CreatableSelect from 'react-select/creatable'
 import { AnimatePresence, motion } from 'motion/react'
@@ -188,7 +188,13 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
     const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
         setNotification({ message, type })
         setTimeout(() => setNotification(null), 2500)
-    }    
+    }
+
+    useEffect(() => {
+        if (open) {
+            setShowHuggingfaceDrawer(false)
+        }
+    }, [open])
 
     if (!open) return null
 

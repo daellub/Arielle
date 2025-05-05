@@ -174,20 +174,26 @@ export default function LiveTranscriptPanel() {
 
                 <div className='mb-4'>
                     <div className='text-[14px] text-black mb-1'>실시간 텍스트</div>
-                    <div className='text-[16px font-mono text-neutral-600'>
+                    <div className='text-[16px] font-medium text-neutral-600'>
                         {currentTranscript ? currentTranscript.text : (isConnected ? '✅ 실시간 텍스트 수신 중...' : '🟡 연결되지 않음. 시작을 눌러주세요.')}
                     </div>
                 </div>
 
                 <div className='text-sm text-neutral-500'>
                     <div className='mb-1'>인식 로그</div>
-                    <ul className='space-y-1 pl-3 list-disc'>
-                        {history.slice(-1).map((item, index) => (
-                            <li key={index}>
-                                '{item.text}' ({item.lang}) - {item.timestamp}
-                            </li>
-                        ))}
-                    </ul>
+                    {history.length === 0 ? (
+                        <div className='px-3 py-1 text-gray-400'>
+                            로그가 없습니다. 새로운 로그를 기다려보세요.
+                        </div>
+                    ) : (
+                        <ul className='space-y-1 pl-3 list-disc'>
+                            {history.slice(-1).map((item, index) => (
+                                <li key={index}>
+                                    '{item.text}' ({item.lang}) - {item.timestamp}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                 </div>
             </div>
             <AnimatePresence>

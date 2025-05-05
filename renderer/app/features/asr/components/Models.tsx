@@ -1,5 +1,4 @@
 // app/features/asr/components/Models.tsx
-
 'use client'
 
 import axios from 'axios'
@@ -13,12 +12,13 @@ import { fetchModels } from '@/app/features/asr/utils/api'
 import ModelPopup from '@/app/features/asr/components/ModelPopup'
 import Notification from './Notification'
 import ConfirmPopup from './ConfirmPopup'
-import { useMicInputLevel } from '@/app/features/asr/hooks/useMicInputLevel'
 import SettingsPanel from './Settings'
 import { useSelectedModelStore } from '@/app/features/asr/store/useSelectedModelStore'
 import { Model, ModelStatus } from '@/app/features/asr/types/Model'
-
-import { useMicStore } from '@/app/features/asr/store/useMicStore'
+import { useDownload } from './DownloadContext'
+import { Download } from 'lucide-react'
+import { DownloadPanel } from './DownloadPanel'
+import ModelInfoPopup from './ModelInfoPopup'
 
 // 레이턴시 파싱
 const parseLatency = (latency: string | number | null | undefined): number => {
@@ -32,7 +32,6 @@ const parseLatency = (latency: string | number | null | undefined): number => {
 
 const StatusBar = ({ status, latency }: { status: ModelStatus, latency: string }) => {
     const latencyNum = parseLatency(latency)
-
     const getColor = () => {
         if (status === 'loading') return '#318DEC';
         if (status === 'error') return '#C24568';
@@ -72,7 +71,7 @@ const StatusBar = ({ status, latency }: { status: ModelStatus, latency: string }
     ))
     
     return <div className='flex space-x-[2px]'>{bars}</div>
-};
+}
 
 const StatusIndicator = ({ status }: { status: ModelStatus }) => (
     <div className={clsx(
@@ -95,7 +94,17 @@ export default function Models() {
     const [loadingModelId, setLoadingModelId] = useState<string | null>(null)
     const [confirmOpen, setConfirmOpen] = useState(false)
     const [modelToDelete, setModelToDelete] = useState<Model | null>(null)
-    const [showSettings, setShowSettings] = useState(false) 
+    const [showSettings, setShowSettings] = useState(false)
+    const [isDownloadOpen, setDownloadOpen] = useState(false)
+    const panelRef = useRef<HTMLDivElement>(null)
+    const downloadBtnRef = useRef<HTMLButtonElement>(null)
+    const [showModelInfo, setShowModelInfo] = useState(false)
+    const [infoModel, setInfoModel] = useState<Model | null>(null)
+
+    const closeModelInfo = () => {
+        setShowModelInfo(false)
+        setTimeout(() => setInfoModel(null), 300) // 애니메이션 끝나고 제거
+    }
 
     useEffect(() => {
         const fetchData = async () => {
@@ -170,12 +179,12 @@ export default function Models() {
             if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
                 setMenuOpen(false)
             }
+            if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+                setDownloadOpen(false)
+            }
         }
-
         document.addEventListener("mousedown", handleClickOutside)
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside)
-        }
+        return () => document.removeEventListener("mousedown", handleClickOutside)
     }, [])
 
     useEffect(() => {
@@ -184,14 +193,53 @@ export default function Models() {
         return () => window.removeEventListener("click", handleClickOutside);
     }, [])
 
+    useEffect(() => {
+        fetchModels().then(setModels).catch(console.error)
+    }, [])
+
+    // useEffect(() => {
+    //     const handleClickOutside = (e: MouseEvent) => {
+    //         if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setMenuOpen(false)
+    //         if (panelRef.current && !panelRef.current.contains(e.target as Node)) setDownloadOpen(false)
+    //     }
+    //     document.addEventListener("mousedown", handleClickOutside)
+    //     return () => document.removeEventListener("mousedown", handleClickOutside)
+    // }, [])
+
     return (
         <>
             <section className={clsx(
-                "relative w-full min-w-[300px] max-w-[300px] h-screen min-h-[680px] max-h-[680px] max-h-[680px] ml-[80px] mt-[20px] px-6 py-6 bg-white rounded-lg shadow-md transition-all"
+                "relative w-full min-w-[300px] max-w-[300px] min-h-[665px] max-h-[665px] max-h-[665px] ml-[80px] mt-[20px] px-6 py-6 bg-white rounded-lg shadow-md transition-all overflow-visible"
             )}>
                 <div className='flex items-center justify-between mb-4'>
-                    <h2 className="text-xl text-black font-MapoPeacefull">Models</h2>
-        
+                    <div className='relative' ref={panelRef}>
+                        <div className='flex items-center gap-2'>
+                            <h2 className="text-xl text-black font-MapoPeacefull">Models</h2>
+                            <div className='relative inline-block'>
+                                <button
+                                    ref={downloadBtnRef}
+                                    onClick={() => setDownloadOpen(true)}
+                                    className='w-8 h-8 text-black rounded-full flex items-center justify-center hover:bg-gray-800 hover:text-white'
+                                >
+                                    <Download className='w-4 h-4' />
+                                </button>
+
+                                {isDownloadOpen && downloadBtnRef.current && (
+                                    <div
+                                        style={{
+                                        position: 'absolute',
+                                        top: downloadBtnRef.current.offsetTop + downloadBtnRef.current.offsetHeight + 8,
+                                        left: downloadBtnRef.current.offsetLeft,
+                                        zIndex: 9999
+                                        }}
+                                    >
+                                        <DownloadPanel isOpen={isDownloadOpen} onClose={() => setDownloadOpen(false)} />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div className='relative' ref={dropdownRef}>
                         <button
                             onClick={() => setMenuOpen(prev => !prev)}
@@ -205,61 +253,61 @@ export default function Models() {
                             />
                         </button>
                         <AnimatePresence>
-                        {menuOpen && (
-                            <motion.div
-                                initial={{ opacity: 0, y: -5 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -5 }}
-                                transition={{ duration: 0.2 }}
-                                className='absolute right-0 mt-2 w-[140px] bg-white border rounded-lg shadow-lg z-10'
-                            >
-                                <button
-                                    className='w-full text-left font-MapoPeacefull px-4 py-2 text-sm text-blue-400 hover:bg-gray-100 flex items-center gap-x-2'
-                                    onClick={() => {
-                                        setMenuOpen(false)
-                                        setIsAddModalOpen(true)
-                                    }}
+                            {menuOpen && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -5 }}
+                                    transition={{ duration: 0.2 }}
+                                    className='absolute right-0 mt-2 w-[140px] bg-white border-gray-200 rounded-lg shadow-lg z-10'
                                 >
-                                    <Image 
-                                        src="/icons/Models/Dropdown/plus.svg"
-                                        alt="Add Model"
-                                        width={12}
-                                        height={12}    
-                                    />
-                                    모델 추가
-                                </button>
-                                <button
-                                    className="w-full text-left font-MapoPeacefull px-4 py-2 text-sm text-green-400 hover:bg-gray-100 flex items-center gap-x-2"
-                                    onClick={() => {
-                                        setMenuOpen(false)
-                                        handleRefresh()
-                                    }}
-                                >
-                                    <Image 
-                                        src="/icons/Models/Dropdown/refresh.svg"
-                                        alt="Refresh Models"
-                                        width={12}
-                                        height={12}    
-                                    />
-                                    새로고침
-                                </button>
-                                <button
-                                    className="w-full text-left font-MapoPeacefull px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 flex items-center gap-x-2"
-                                    onClick={() => {
-                                        setMenuOpen(false)
-                                        setShowSettings(true)
-                                    }}
-                                >
-                                    <Image 
-                                        src="/icons/Models/Dropdown/settings.svg"
-                                        alt="Model Setting"
-                                        width={12}
-                                        height={12}    
-                                    />
-                                    설정
-                                </button>
-                            </motion.div>
-                        )}
+                                    <button
+                                        className='w-full text-left font-MapoPeacefull px-4 py-2 text-sm text-blue-400 hover:bg-gray-100 hover:rounded-lg flex items-center gap-x-2'
+                                        onClick={() => {
+                                            setMenuOpen(false)
+                                            setIsAddModalOpen(true)
+                                        }}
+                                    >
+                                        <Image 
+                                            src="/icons/Models/Dropdown/plus.svg"
+                                            alt="Add Model"
+                                            width={12}
+                                            height={12}    
+                                        />
+                                        모델 추가
+                                    </button>
+                                    <button
+                                        className="w-full text-left font-MapoPeacefull px-4 py-2 text-sm text-green-400 hover:bg-gray-100 hover:rounded-lg flex items-center gap-x-2"
+                                        onClick={() => {
+                                            setMenuOpen(false)
+                                            handleRefresh()
+                                        }}
+                                    >
+                                        <Image 
+                                            src="/icons/Models/Dropdown/refresh.svg"
+                                            alt="Refresh Models"
+                                            width={12}
+                                            height={12}    
+                                        />
+                                        새로고침
+                                    </button>
+                                    <button
+                                        className="w-full text-left font-MapoPeacefull px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 hover:rounded-lg flex items-center gap-x-2"
+                                        onClick={() => {
+                                            setMenuOpen(false)
+                                            setShowSettings(true)
+                                        }}
+                                    >
+                                        <Image 
+                                            src="/icons/Models/Dropdown/settings.svg"
+                                            alt="Model Setting"
+                                            width={12}
+                                            height={12}    
+                                        />
+                                        설정
+                                    </button>
+                                </motion.div>
+                            )}
                         </AnimatePresence>
                     </div>
                 </div>
@@ -336,7 +384,7 @@ export default function Models() {
                                             </div>
                                     
                                     
-                                            <div className='border-t w-full mt-1'></div>
+                                            <div className='border-t border-gray-300 w-full mt-1'></div>
                                     
                                             <div className='flex items-center'>
                                                 <div className={clsx(
@@ -402,7 +450,16 @@ export default function Models() {
                                                 }}>
                                                 모델 삭제
                                             </button>
-                                            <button className="block w-full text-left px-2 py-1 hover:bg-gray-200 rounded-lg" onClick={() => console.log("모델 정보 보기")}>
+                                            <button 
+                                                className="block w-full text-left px-2 py-1 hover:bg-gray-200 rounded-lg"
+                                                onClick={() => {
+                                                    if (contextMenu.model) {
+                                                        setInfoModel(contextMenu.model)
+                                                        setShowModelInfo(true)
+                                                        setContextMenu(null)
+                                                    }
+                                                }}
+                                            >
                                                 모델 정보 보기
                                             </button>
                                             <button className="block w-full text-left px-2 py-1 hover:bg-gray-200 rounded-lg" onClick={() => console.log("모델 다시 로드")}>
@@ -497,6 +554,14 @@ export default function Models() {
                 {showSettings && (
                     <SettingsPanel onClose={() => setShowSettings(false)} />
                 )}
+                {showModelInfo && infoModel && (
+                    <ModelInfoPopup
+                        model={infoModel}
+                        visible={showModelInfo}
+                        onClose={closeModelInfo}
+                    />
+                )}
+
             </section>
             <AnimatePresence>
                 {notification && (

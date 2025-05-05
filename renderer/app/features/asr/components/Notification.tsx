@@ -27,7 +27,7 @@ export default function Notification({ message, type = 'info', onClose }: Props)
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
             className={clsx(
-                'fixed left-1/2 bottom-8 transform -translate-x-1/2 px-4 py-3 rounded-xl shadow-xl z-50 w-fit min-w-[200px] text-center text-white font-semibold text-sm',
+                'fixed left-1/2 bottom-8 transform -translate-x-1/2 px-4 py-3 rounded-xl shadow-xl z-[9999] w-fit min-w-[200px] text-center text-white font-semibold text-sm',
                 {
                     'bg-green-500': type === 'success',
                     'bg-red-500': type === 'error',
