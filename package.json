@@ -22,6 +22,7 @@
     },
     "dependencies": {
         "@picovoice/web-voice-processor": "^4.0.9",
+        "@radix-ui/react-dialog": "^1.1.13",
         "@ricky0123/vad-web": "^0.0.22",
         "axios": "^1.8.4",
         "clsx": "^2.1.1",

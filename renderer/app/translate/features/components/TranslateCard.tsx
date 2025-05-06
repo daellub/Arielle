@@ -16,8 +16,9 @@ export default function TranslateCard({ icon, title, content, color = 'text-gray
     return (
         <div
             className={clsx(
-                "rounded-xl p-4 w-full shadow-md border",
-                glow ? "border-pink-500/50 shadow-pink-500/20" : "border-white/20"
+                "rounded-xl p-4 shadow-md border",
+                glow ? "border-pink-500/50 shadow-pink-500/20" : "border-white/20",
+                "w-full md:w-[300px] lg:w-[320px]"
             )}
         >
             <div className="flex items-center gap-2 mb-2 text-sm font-semibold">
