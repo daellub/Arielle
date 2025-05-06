@@ -5,7 +5,7 @@ import { Languages } from 'lucide-react'
 import Sidebar from '@/app/components/ui/Sidebar'
 import TranslatePanel from '@/app/translate/features/components/TranslatePanel'
 import TranslateActionPanel from '@/app/translate/features/components/TranslateActionPanel'
-import TranslationHistoryList from './features/components/TranslateHistoryPanel'
+import TranslationHistoryList from './features/components/TranslateHistoryList'
 
 export default function TranslatePage() {
     return (
