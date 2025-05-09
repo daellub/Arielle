@@ -6,11 +6,11 @@ import React, { useEffect, useState } from 'react'
 import { AnimatePresence } from 'motion/react'
 import axios from 'axios'
 
-import RecordingStatusIndicator from './RecordingStatusIndicator'
+import { useRecordingStore } from '@/app/store/useRecordingStore'
 import { useMicStore } from '@/app/asr/features/store/useMicStore'
 import { Transcript, useTranscriptStore } from '@/app/asr/features/store/useTranscriptStore'
 import { useSelectedModelStore } from '@/app/asr/features/store/useSelectedModelStore'
-import Notification from './Notification'
+import { useNotificationStore } from '@/app/store/useNotificationStore'
 
 export default function LiveTranscriptPanel() {
     const { 
@@ -28,30 +28,26 @@ export default function LiveTranscriptPanel() {
 
     const [socket, setSocket] = useState<Socket | null>(null)
     const [isConnected, setIsConnected] = useState(false)
-    const [isRecording, setIsRecording] = useState(false)
-    const [notification, setNotification] = useState<{
-        message: string
-        type?: 'success' | 'error' | 'info'
-    } | null>(null)
 
-    const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-        setNotification({ message, type })
-        setTimeout(() => setNotification(null), 2500)
-    } 
+    const isRecording = useRecordingStore.getState().isRecording
+
+    const setRecording = useRecordingStore((s) => s.setRecording)
+
+    const notify = useNotificationStore((s) => s.show)
 
     const handleStart = () => {
         if (!selectedModel || selectedModel.status !== 'active') {
-            showNotification('모델이 선택되지 않았거나 로드되지 않았습니다.', 'info')
+            notify('모델이 선택되지 않았거나 로드되지 않았습니다.', 'info')
             return
         }
 
         if (!deviceId) {
-            showNotification('사용할 마이크를 선택해 주세요!', 'info')
+            notify('사용할 마이크를 선택해 주세요!', 'info')
             return
         }
 
         if (isConnected || isRecording) {
-            showNotification('이미 녹음 중입니다.', 'error')
+            notify('이미 녹음 중입니다.', 'error')
             return
         }
 
@@ -85,7 +81,7 @@ export default function LiveTranscriptPanel() {
         newSocket.on('connect', async () => {
             // console.log('[SOCKET] 연결 성공')
             setIsConnected(true)
-            showNotification('Socket과 연결되었습니다.', 'success')
+            notify('Socket과 연결되었습니다.', 'success')
 
             if (selectedModel.framework === 'Azure') {
                 const payload: any = {
@@ -101,19 +97,19 @@ export default function LiveTranscriptPanel() {
             } else {
                 newSocket.emit('start_transcribe', { model_id: selectedModel.id });
             }
-            setIsRecording(true)
+            setRecording(true)
         })
 
         newSocket.on('disconnect', () => {
             // console.log('[SOCKET] 연결 종료')
             setIsConnected(false)
-            setIsRecording(false)
-            showNotification('Socket과 연결을 종료했습니다.', 'success')
+            setRecording(false)
+            notify('Socket과 연결을 종료했습니다.', 'success')
         })
 
         newSocket.on('error', (err) => {
             // console.error('[SOCKET] 오류 발생: ', err)
-            showNotification('Socket과 연결 중 오류가 발생했습니다.', 'error')
+            notify('Socket과 연결 중 오류가 발생했습니다.', 'error')
         })
 
         setSocket(newSocket)
@@ -121,11 +117,11 @@ export default function LiveTranscriptPanel() {
 
     const handleStop = () => {
         if (!selectedModel || selectedModel.status !== 'active') {
-            showNotification('모델이 선택되지 않았거나 종료된 상태입니다.', 'info')
+            notify('모델이 선택되지 않았거나 종료된 상태입니다.', 'info')
             return
         }
         if (!isRecording) {
-            showNotification('현재 녹음 중이 아닙니다.', 'info')
+            notify('현재 녹음 중이 아닙니다.', 'info')
             return
         }
         if (socket) {
@@ -135,17 +131,17 @@ export default function LiveTranscriptPanel() {
                 socket.emit('stop_transcribe', {});
             }
             setIsConnected(false);
-            setIsRecording(false);
+            setRecording(false);
 
             socket.disconnect()
 
             setSocket(null)
         }
-        showNotification('Socket과 연결을 종료했습니다.', 'success')
+        notify('Socket과 연결을 종료했습니다.', 'success')
     }
 
     const handleReset = () => {
-        showNotification('전사된 텍스트를 초기화했습니다.', 'info')
+        notify('전사된 텍스트를 초기화했습니다.', 'info')
         clearTranscript()
     }
 
@@ -159,7 +155,6 @@ export default function LiveTranscriptPanel() {
 
     return (
         <>
-            <RecordingStatusIndicator isRecording={isRecording} />
             <div className='max-w-[600px] min-w-[600px] max-h-[250px] p-7 rounded-[30px] bg-white shadow-md border border-gray-200'>
                 <div className='flex items-center justify-between mb-3'>
                     <span className='text-[18px] font-semibold text-black'>LIVE Transcribe</span>
@@ -196,15 +191,6 @@ export default function LiveTranscriptPanel() {
                     )}
                 </div>
             </div>
-            <AnimatePresence>
-                {notification && (
-                    <Notification
-                        message={notification.message}
-                        type={notification.type}
-                        onClose={() => setNotification(null)}
-                    />
-                )}
-            </AnimatePresence>
         </>
     )
 }

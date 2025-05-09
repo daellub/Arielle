@@ -5,6 +5,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import { DownloadProvider } from "@/app/asr/features/components/DownloadContext";
+import Notification from '@/app/components/ui/Notification'
+import RecordingStatusIndicator from "@/app/components/ui/RecordingStatusIndicator";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,7 +33,9 @@ export default function RootLayout({
       <body className="bg-gray-900 min-h-screen flex">
         <DownloadProvider>
           <main className="bg-white w-full p-6 rounded-lg">
+            <RecordingStatusIndicator />
             {children}
+            <Notification />
           </main>
         </DownloadProvider>
       </body>

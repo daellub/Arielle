@@ -7,16 +7,16 @@ import Sidebar from '@/app/components/ui/Sidebar'
 import Models from '@/app/asr/features/components/Models'
 import MicStatus from '@/app/asr/features/components/MicStatus'
 import LiveTranscriptPanel from '@/app/asr/features/components/LiveTranscriptPanel'
-import SystemStatus from './features/components/Status'
-import SystemLog from './features/components/SystemLog'
+import SystemStatus from '@/app/asr/features/components/Status'
+import SystemLog from '@/app/asr/features/components/SystemLog'
 
 import { useMicInputLevel } from '@/app/asr/features/hooks/useMicInputLevel'
 import { useMicStore } from '@/app/asr/features/store/useMicStore'
 import { useEffect, useState, useRef } from 'react'
-import StatusFetcher from './features/components/StatusFetcher'
-import { DownloadPanel } from './features/components/DownloadPanel'
-import { DownloadProvider } from './features/components/DownloadContext'
-import Notification from './features/components/Notification'
+import StatusFetcher from '@/app/asr/features/components/StatusFetcher'
+import { DownloadPanel } from '@/app/asr/features/components/DownloadPanel'
+import { DownloadProvider } from '@/app/asr/features/components/DownloadContext'
+import { useNotificationStore } from '@/app/store/useNotificationStore'
 
 export default function Home() {
     const { 
@@ -28,8 +28,7 @@ export default function Home() {
     const [isDownloadOpen, setDownloadOpen] = useState(false)
     const panelRef = useRef<HTMLDivElement>(null)
 
-    const [pendingNotification, setPendingNotification] = useState<null | { message: string; type?: 'success' | 'info' }>(null)
-    const [notification, setNotification] = useState<{ message: string; type?: 'success' | 'info' } | null>(null)
+    const notify = useNotificationStore((s) => s.show)
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -48,34 +47,20 @@ export default function Home() {
         }, 1000)
     }, [])
 
-    useEffect(() => {
-        if (pendingNotification) {
-            setNotification(pendingNotification)
-            setPendingNotification(null)
-        }
-    }, [pendingNotification])
-
     return (
         <DownloadProvider
             onDownloadStart={(task) => {
                 setTimeout(() => {
-                    setPendingNotification({
-                        message: `'${task.filename}' 다운로드 시작`,
-                        type: 'info',
-                    })
+                    notify(`'${task.filename}' 다운로드 시작`, 'info')
                 }, 0)
             }}
             onDownloadComplete={(task) => {
                 setTimeout(() => {
-                    setPendingNotification({
-                        message: `'${task.filename}' 다운로드 완료`,
-                        type: 'success',
-                    })
+                    notify(`'${task.filename}' 다운로드 완료`, 'success')
                 }, 0)
             }}
         >
             <div className="flex bg-white">
-                <Sidebar />
                 <Models />
                 <div className='space-y-[-7.883px] p-6'>
                     <header className="relative p-5 flex justify-between items-center">
@@ -97,16 +82,6 @@ export default function Home() {
             <div ref={panelRef}>
                 <DownloadPanel isOpen={isDownloadOpen} onClose={() => setDownloadOpen(false)} />
             </div>
-
-            <AnimatePresence>
-                {notification && (
-                    <Notification
-                        message={notification.message}
-                        type={notification.type}
-                        onClose={() => setNotification(null)}
-                    />
-                )}
-            </AnimatePresence>
         </DownloadProvider>
     )
 }

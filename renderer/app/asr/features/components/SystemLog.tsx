@@ -250,8 +250,8 @@ export default function SystemLog() {
                             <BarChart3 className='w-7.5 h-7.5 text-black' />
                             <div>
                                 <span className="text-xs text-black text-[13px]">Activities</span>
-                                <div className="w-[120px] h-[36px]">
-                                    <ResponsiveContainer width="100%" height="100%">
+                                <div className="w-[120px] aspect-[3.33]">
+                                    <ResponsiveContainer width="100%" height={36}>
                                         <LineChart data={chartData}>
                                             <XAxis dataKey="name" hide />
                                             <RechartsTooltip

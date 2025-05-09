@@ -14,13 +14,13 @@ import {
 import { motion, AnimatePresence } from 'motion/react'
 import clsx from 'clsx'
 
-import Notification from './Notification'
+import { useNotificationStore } from '@/app/store/useNotificationStore'
 import styles from './DownloadPanel.module.css'
 
 export function DownloadPanel({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
     const { tasks, removeTask } = useDownload()
     const [isElectronReady, setElectronReady] = useState(false)
-    const [notification, setNotification] = useState<{ message: string; type?: 'success' | 'error' | 'info' } | null>(null)
+    const notify = useNotificationStore((s) => s.show)
 
     useEffect(() => {
         const ready = typeof window !== 'undefined' &&
@@ -101,10 +101,9 @@ export function DownloadPanel({ isOpen, onClose }: { isOpen: boolean, onClose: (
                                                         onClick={() => {
                                                             if (task.path) {
                                                                 window.electronAPI.copyToClipboard(task.path!)
-                                                                setNotification({ message: '경로가 복사되었습니다.', type: 'success' })
+                                                                notify('경로가 복사되었습니다.', 'success')
                                                             } else {
-                                                                setNotification({ message: '경로를 찾을 수 없습니다.', type: 'error' })
-                                                                console.warn('❌ 경로가 비어있음')
+                                                                notify('경로를 찾을 수 없습니다.', 'error')
                                                             }
                                                         }}
                                                         title="Copy path"
@@ -137,7 +136,7 @@ export function DownloadPanel({ isOpen, onClose }: { isOpen: boolean, onClose: (
                                                     } catch (err) {
                                                         console.warn('백엔드 취소 실패:', err)
                                                     }
-                                                    setNotification({ message: `${task.filename} 다운로드 취소됨`, type: 'info' })
+                                                    notify(`${task.filename} 다운로드 취소됨`, 'info')
                                                 }}
                                                 title="다운로드 취소"
                                             >
@@ -228,15 +227,6 @@ export function DownloadPanel({ isOpen, onClose }: { isOpen: boolean, onClose: (
                     <div className="text-xs text-gray-400">Cache path not available</div>
                 )}
                 </div>
-                <AnimatePresence>
-                    {notification && (
-                        <Notification
-                        message={notification.message}
-                        type={notification.type}
-                        onClose={() => setNotification(null)}
-                        />
-                    )}
-                </AnimatePresence>
             </motion.div>
         </AnimatePresence>
     )

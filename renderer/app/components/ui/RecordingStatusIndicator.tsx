@@ -4,14 +4,11 @@
 import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { Circle, CircleDot } from 'lucide-react'
+import { useRecordingStore } from '@/app/store/useRecordingStore'
 
-interface Props {
-    isRecording: boolean
-}
-
-export default function RecordingStatusIndicator({ isRecording }: Props) {
+export default function RecordingStatusIndicator() {
+    const isRecording = useRecordingStore((s) => s.isRecording)
     const [isVisible, setIsVisible] = useState(true)
-
     const hideTimeout = useRef<NodeJS.Timeout | null>(null)
 
     useEffect(() => {

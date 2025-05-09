@@ -1,15 +1,8 @@
+// app/page.tsx
 'use client'
 
-import Sidebar from '@/app/components/ui/Sidebar'
+import AppContainer from './AppContainer'
 
-export default function HomePage() {
-    return (
-        <div className="flex bg-white">
-            <Sidebar />
-            <div className="p-6 text-black">
-                <h1 className="text-3xl font-bold">🏠 Home</h1>
-                <p className="mt-2">Welcome to Project Arielle Dashboard.</p>
-            </div>
-        </div>
-    )
+export default function Root() {
+    return <AppContainer />
 }

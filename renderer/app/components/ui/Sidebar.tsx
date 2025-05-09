@@ -2,27 +2,41 @@
 'use client'
 
 import Image from 'next/image'
-import React, {useState} from 'react'
+import {
+    Home,
+    SlidersHorizontal,
+    ShieldCheck,
+    Mic,
+    BotMessageSquare,
+    Languages,
+    Volume2,
+    Share2,
+    Database,
+    Moon
+} from 'lucide-react'
+import { useState } from 'react'
 import clsx from 'clsx'
-import { usePathname } from 'next/navigation'
 
 const items = [
-    { icon: '/icons/Sidebar/Home.svg', label: 'Home'},
-    { icon: '/icons/Sidebar/Dashboard.svg', label: 'Dashboard'},
-    { icon: '/icons/Sidebar/Security.svg', label: 'Security'},
-    { icon: '/icons/Sidebar/ASR.svg', label: 'ASR', active: true},
-    { icon: '/icons/Sidebar/LLM.svg', label: 'LLM'},
-    { icon: '/icons/Sidebar/Translate.svg', label: 'Translate'},
-    { icon: '/icons/Sidebar/TTS.svg', label: 'TTS'},
-    { icon: '/icons/Sidebar/VRM.svg', label: 'VRM'},
-    { icon: '/icons/Sidebar/DB.svg', label: 'Database'},
+    { icon: Home, label: 'Home' },
+    { icon: SlidersHorizontal, label: 'Dashboard' },
+    { icon: ShieldCheck, label: 'Security' },
+    { icon: Mic, label: 'ASR' },
+    { icon: BotMessageSquare, label: 'LLM' },
+    { icon: Languages, label: 'Translate' },
+    { icon: Volume2, label: 'TTS' },
+    { icon: Share2, label: 'VRM' },
+    { icon: Database, label: 'Database' },
 ]
 
-import Link from 'next/link'
-
-export default function Sidebar() {
+export default function Sidebar({
+    selected,
+    onSelect,
+}: {
+    selected: string
+    onSelect: (label: string) => void
+}) {
     const [hovered, setHovered] = useState(false)
-    const pathname = usePathname()
 
     return (
         <aside
@@ -40,38 +54,33 @@ export default function Sidebar() {
                     <Image src="/assets/Logo.png" alt="Logo" width={60} height={45} className='min-w-[60px] min-h-[45px]' />
                 </div>
                 <div className='flex flex-col gap-5'>
-                    {items.map((item, i) => {
-                        const route = item.label === 'Home' ? '/' : `/${item.label.toLowerCase()}`
-                        const isActive = pathname === route
-
-                        return (
-                            <Link key={i} href={route}>
-                                <SidebarItem
-                                    src={item.icon}
-                                    label={item.label}
-                                    active={isActive}
-                                    showText={hovered}
-                                />
-                            </Link>
-                        )
-                    })}
+                    {items.map((item, i) => (
+                        <div key={i} onClick={() => onSelect(item.label)}>
+                            <SidebarItem
+                                icon={item.icon}
+                                label={item.label}
+                                active={selected == item.label}
+                                showText={hovered}
+                            />
+                        </div>
+                    ))}
                 </div>
             </div>
             {/* 다크모드 토글 */}
             <div className="flex flex-col px-3 pb-8">
-                <SidebarItem src="/icons/Sidebar/moon.svg" label="Dark Mode" showText={hovered}/>
+                <SidebarItem icon={Moon} label="Dark Mode" showText={hovered}/>
             </div>
         </aside>
     )
 }
 
 function SidebarItem({
-    src,
+    icon: Icon,
     label,
     active,
     showText,
 }: {
-    src: string
+    icon: React.ElementType
     label: string
     active?: boolean
     showText: boolean
@@ -84,19 +93,16 @@ function SidebarItem({
             )}
         >
             {/* 아이콘 */}
-            <Image src={src} alt={label} width={23} height={23} 
-                className={clsx(
+            <Icon className={clsx(
                     'w-[23px] h-[23px] min-w-[23px] min-h-[23px] flex-shrink-0',
-                    active ? 'filter invert' : ''
-                )}
-                priority
-            />
+                    active ? 'text-white' : 'text-black'
+                )}/>
             {/* 텍스트 */}
             <span 
                 className={clsx(
                     'font-MapoPeacefull text-sm text-black whitespace-nowrap transition-transform duration-200',
                     showText ? 'scale-100 ml-1' : 'scale-0 w-0 overflow-hidden',
-                    active ? 'text-white' : ''
+                    active ? 'text-white' : 'text-black'
                 )}
             >
                 {label}

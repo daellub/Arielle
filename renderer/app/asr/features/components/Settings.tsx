@@ -6,6 +6,7 @@ import React, { useEffect, useState } from 'react'
 import MicStatus from './MicStatus'
 import { useMicInputLevel } from '@/app/asr/features/hooks/useMicInputLevel'
 import { useMicStore } from '@/app/asr/features/store/useMicStore'
+import { useNotificationStore } from '@/app/store/useNotificationStore'
 
 interface Props {
     onClose: () => void
@@ -15,6 +16,8 @@ export default function SettingsPanel({ onClose }: Props) {
     const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
     const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>()
     const [testing, setTesting] = useState(false);
+
+    const notify = useNotificationStore((s) => s.show)
 
     const {
         setDevice,
@@ -49,6 +52,8 @@ export default function SettingsPanel({ onClose }: Props) {
                 store.setDevice(selected.deviceId, selected.label)
             }
         }
+
+        notify('설정이 저장되었습니다.', 'info')
         onClose()
     }
 

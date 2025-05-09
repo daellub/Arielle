@@ -10,7 +10,7 @@ import { useEffect, useRef, useState } from 'react'
 import AddModel from '@/app/asr/features/components/AddModel'
 import { fetchModels } from '@/app/asr/features/utils/api'
 import ModelPopup from '@/app/asr/features/components/ModelPopup'
-import Notification from './Notification'
+import { useNotificationStore } from '@/app/store/useNotificationStore'
 import ConfirmPopup from './ConfirmPopup'
 import SettingsPanel from './Settings'
 import { useSelectedModelStore } from '@/app/asr/features/store/useSelectedModelStore'
@@ -90,7 +90,6 @@ export default function Models() {
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; model?: Model } | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const [popupVisible, setPopupVisible] = useState(false)
-    const [notification, setNotification] = useState<{ message: string; type?: 'success' | 'error' | 'info' } | null>(null)
     const [loadingModelId, setLoadingModelId] = useState<string | null>(null)
     const [confirmOpen, setConfirmOpen] = useState(false)
     const [modelToDelete, setModelToDelete] = useState<Model | null>(null)
@@ -100,6 +99,8 @@ export default function Models() {
     const downloadBtnRef = useRef<HTMLButtonElement>(null)
     const [showModelInfo, setShowModelInfo] = useState(false)
     const [infoModel, setInfoModel] = useState<Model | null>(null)
+
+    const notify = useNotificationStore((s) => s.show)
 
     const closeModelInfo = () => {
         setShowModelInfo(false)
@@ -145,7 +146,7 @@ export default function Models() {
     
             if (!res.ok) throw new Error("삭제 실패!")
     
-            showNotification('모델을 삭제했습니다.', 'success')
+            notify('모델을 삭제했습니다.', 'success')
 
             setModels(prev =>
                 prev.map(m =>
@@ -156,7 +157,7 @@ export default function Models() {
             setContextMenu(null)
         } catch (err) {
             console.error("모델 삭제 실패:", err)
-            showNotification('모델 삭제를 실패했습니다.', 'error')
+            notify('모델 삭제를 실패했습니다.', 'error')
         }
     }
 
@@ -167,11 +168,6 @@ export default function Models() {
         } catch (err) {
             console.error("새로고침 실패: ", err)
         }
-    }
-
-    const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-        setNotification({ message, type })
-        setTimeout(() => setNotification(null), 3000)
     }
 
     useEffect(() => {
@@ -196,15 +192,6 @@ export default function Models() {
     useEffect(() => {
         fetchModels().then(setModels).catch(console.error)
     }, [])
-
-    // useEffect(() => {
-    //     const handleClickOutside = (e: MouseEvent) => {
-    //         if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setMenuOpen(false)
-    //         if (panelRef.current && !panelRef.current.contains(e.target as Node)) setDownloadOpen(false)
-    //     }
-    //     document.addEventListener("mousedown", handleClickOutside)
-    //     return () => document.removeEventListener("mousedown", handleClickOutside)
-    // }, [])
 
     return (
         <>
@@ -489,11 +476,11 @@ export default function Models() {
 
                             try {
                                 await axios.post(`http://localhost:8000/asr/models/load/${selectedModel?.id}`)
-                                showNotification('모델을 로드했습니다.', 'success')
+                                notify('모델을 로드했습니다.', 'success')
                                 await handleRefresh()
                             } catch (err) {
                                 console.error("모델 로드 실패: ", err)
-                                showNotification('모델 로드를 실패했습니다.', 'error')
+                                notify('모델 로드를 실패했습니다.', 'error')
                             } finally {
                                 clearSelectedModel()
                                 setLoadingModelId(null)
@@ -501,7 +488,7 @@ export default function Models() {
                         }}
                         onUnloadModel={async () => {
                             if (!selectedModel?.id) {
-                                showNotification('선택된 모델이 없습니다.', 'error')
+                                notify('선택된 모델이 없습니다.', 'error')
                                 return
                             }
                             
@@ -509,15 +496,15 @@ export default function Models() {
                                 const res = await axios.post(`http://localhost:8000/asr/models/unload/${selectedModel?.id}`) 
                             
                                 if (res.data.status === 'success') {
-                                    showNotification('모델을 언로드했습니다.', 'success')
+                                    notify('모델을 언로드했습니다.', 'success')
                                 } else {
-                                    showNotification('선택된 모델이 이미 언로드 상태이거나 없는 모델입니다.', 'error')
+                                    notify('선택된 모델이 이미 언로드 상태이거나 없는 모델입니다.', 'error')
                                 }
                             
                                 await handleRefresh()
                             } catch (err) {
                                 console.error("모델 언로드 실패: ", err)
-                                showNotification('모델 언로드에 실패했습니다.', 'error')
+                                notify('모델 언로드에 실패했습니다.', 'error')
                             } finally {
                                 clearSelectedModel()
                             }
@@ -561,17 +548,7 @@ export default function Models() {
                         onClose={closeModelInfo}
                     />
                 )}
-
             </section>
-            <AnimatePresence>
-                {notification && (
-                    <Notification
-                        message={notification.message}
-                        type={notification.type}
-                        onClose={() => setNotification(null)}
-                    />
-                )}
-            </AnimatePresence>
         </>
     )
 }

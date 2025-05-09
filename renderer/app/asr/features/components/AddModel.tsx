@@ -8,7 +8,7 @@ import Select from 'react-select'
 import CreatableSelect from 'react-select/creatable'
 import { AnimatePresence, motion } from 'motion/react'
 
-import Notification from './Notification'
+import { useNotificationStore } from '@/app/store/useNotificationStore'
 import HuggingFaceModelDrawer from './HuggingFaceModelDrawer'
 import { HuggingFaceModel } from '@/app/asr/features/utils/huggingFaceAPI'
 
@@ -87,8 +87,9 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
     const [device, setDevice] = useState('CPU')
     const [language, setLanguage] = useState('ko')
     const [path, setPath] = useState('')
-    const [notification, setNotification] = useState<{ message: string; type?: 'success' | 'error' | 'info' } | null>(null)
     const [isLoading, setIsLoading] = useState(false)
+
+    const notify = useNotificationStore((s) => s.show)
 
     const [showHuggingFaceDrawer, setShowHuggingfaceDrawer] = useState(false)
 
@@ -119,12 +120,12 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
                 (azureMode === 'endpoint' && isFieldEmpty(endpoint)) ||
                 (azureMode === 'region' && isFieldEmpty(region))
         ) {
-                showNotification("모든 필드를 입력해주세요!", 'info');
+                notify("모든 필드를 입력해주세요!", 'info');
                 return;
             }
         } else {
             if (isFieldEmpty(name) || isFieldEmpty(main) || isFieldEmpty(library) || isFieldEmpty(device) || isFieldEmpty(path)) {
-                showNotification("모든 필드를 입력해주세요!", 'info');
+                notify("모든 필드를 입력해주세요!", 'info');
                 return;
             }
         }
@@ -159,12 +160,12 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
                 await axios.post("http://localhost:8000/asr/models/register", whisperBody)
             }
 
-            showNotification("모델을 등록했습니다.", 'success')
+            notify("모델을 등록했습니다.", 'success')
             resetForm()
             onClose()
             onModelAdded?.()
         } catch (err: any) {
-            showNotification("모델 등록을 실패했습니다.", 'error')
+            notify("모델 등록을 실패했습니다.", 'error')
             console.error(err)
         } finally {
             setIsLoading(false)
@@ -183,11 +184,6 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
         setDevice('CPU')
         setLanguage('ko')
         setPath(`/models/${model.id}`)
-    }
-
-    const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-        setNotification({ message, type })
-        setTimeout(() => setNotification(null), 2500)
     }
 
     useEffect(() => {
@@ -344,15 +340,6 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
                     </div>
                 </div>
             </div>
-            <AnimatePresence>
-                {notification && (
-                    <Notification
-                        message={notification.message}
-                        type={notification.type}
-                        onClose={() => setNotification(null)}
-                    />
-                )}
-            </AnimatePresence>
 
             {/* 🔥 HuggingFaceModelDrawer 연결 */}
             {showHuggingFaceDrawer && (
