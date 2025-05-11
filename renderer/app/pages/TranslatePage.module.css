@@ -1,0 +1,58 @@
+/* app/translate/page.module.css */
+
+.container {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    overflow: hidden;
+    background: radial-gradient(circle at center, #fafdff 0%, #f0f5ff 45%, #e2ecfd 70%, #d2e0fa 100%);
+    backdrop-filter: saturate(180%) blur(5px);
+}
+
+.container::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, #cfe5ff 20%, transparent 80%);
+    opacity: 0.06;
+    filter: blur(100px);
+    animation: pulse 6s ease-in-out infinite;
+    z-index: 0;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 0.08;
+    }
+    50% {
+        opacity: 0.15;
+    }
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(0px);
+        opacity: 0.2;
+    }
+    50% {
+        transform: translateY(-10px);
+        opacity: 0.4;
+    }
+    100% {
+        transform: translateY(0px);
+        opacity: 0.2;
+    }
+}
+
+.sparkle {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: white;
+    border-radius: 9999px;
+    opacity: 0.3;
+    filter: blur(1px) drop-shadow(0 0 5px #ffffff66);
+    animation: float 4s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 2;
+}

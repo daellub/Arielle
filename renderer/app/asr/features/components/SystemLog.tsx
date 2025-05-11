@@ -205,7 +205,6 @@ export default function SystemLog() {
         return () => clearInterval(iv)
     }, [])
     
-    // 실시간 스크롤
     useEffect(() => {
         const prev = prevCountRef.current
         const curr = displayedLogs.length
@@ -225,10 +224,12 @@ export default function SystemLog() {
                 onSelect={handleSelect}
             />
             <div className='relative'>
-                <div className="bg-white shadow-[inset_0_0_10px_rgba(0,0,0,0.1)] rounded-[32px] p-5 w-[640px] h-[320px] max-h-[320px] mt-5">
-                    {/* 상단 헤더 */}
+                <div className="w-[640px] h-[320px] max-h-[320px] mt-5 
+                    bg-white/50 backdrop-blur-md border border-white/10 
+                    shadow-[inset_0_4px_12px_rgba(0,0,0,0.08)] 
+                    rounded-2xl px-6 py-6 transition-all overflow-hidden"
+                >
                     <div className="flex justify-between items-center mb-1">
-                        {/* 로그 */}
                         <div className="flex p-3 items-center gap-4">
                             <h3 className="text-lg text-[27px] text-black">Log</h3>
                             <span className="px-3 py-2 bg-black text-white text-[13px] text-sm rounded-full">

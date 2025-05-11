@@ -98,18 +98,35 @@ export default function TranslatePanel({ asrResult, onTranslate, items }: Props)
     }
 
     return (
-        <div className="w-full bg-white/5 backdrop-blur-md rounded-2xl p-6 shadow-inner border border-white/10 flex flex-col gap-6">
-            <textarea
-                className="w-full rounded-md border p-3 bg-white/70 text-[12px] text-black placeholder-gray-500 focus:outline-none resize-none"
-                rows={1}
-                placeholder="번역할 문장을 입력하세요..."
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-            />
+        <div className="w-full bg-white/5 backdrop-blur-md rounded-2xl p-6 shadow-[inset_0_4px_20px_rgba(0,0,0,0.1)] border border-white/10 flex flex-col gap-6 z-10">
+            <div className="flex w-full items-center gap-3">
+                <textarea
+                    className="flex-1 rounded-md border border-gray-300 p-3 bg-white/70 text-sm text-gray-800 placeholder-gray-400 focus:outline-none resize-none shadow-sm"
+                    rows={1}
+                    placeholder="번역할 문장을 입력하세요..."
+                    spellCheck={false}
+                />
+
+                <label className="flex items-center gap-2 text-sm text-gray-600 whitespace-nowrap cursor-pointer">
+                    <input type="checkbox" className="sr-only peer" />
+                    <div className="w-5 h-5 border border-gray-400 rounded-sm peer-checked:bg-indigo-500 flex items-center justify-center transition">
+                        <svg
+                            className="w-3 h-3 text-white hidden peer-checked:block"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                            viewBox="0 0 24 24"
+                        >
+                            <path d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                        LLM 전송 여부
+                </label>
+            </div>
             
             {/* 상단 번역 카드들 */}
-            <div className="flex flex-col lg:flex-row gap-4 items-stretch">
-                <div className='w-full md:w-[250px] lg:w-[270px] h-full'>
+            <div className="flex flex-col lg:flex-row gap-4 items-stretch z-10">
+                <div className='w-full md:w-[250px] lg:w-[270px] h-full z-10'>
                     <TranslateCard
                         icon={
                             <div className="flex items-center gap-2 h-full">
@@ -140,7 +157,7 @@ export default function TranslatePanel({ asrResult, onTranslate, items }: Props)
                 <div
                     className={clsx(
                         'relative w-full md:w-[250px] lg:w-[270px] h-full',
-                        'rounded-2xl bg-white/20 backdrop-blur-md border border-white/30',
+                        'rounded-t-[32px] rounded-b-2xl bg-white/20 backdrop-blur-md border border-white/30',
                         'overflow-visible',
                         'shadow-md',
                         activeTab === 'ASR' ? 'shadow-blue-200/40' : 'shadow-pink-200/40',
@@ -148,26 +165,26 @@ export default function TranslatePanel({ asrResult, onTranslate, items }: Props)
                     )}
                 >
                     {/* 탭 버튼 그룹 */}
-                    <div className="absolute -top-3 left-0 flex z-10 space-x-0">
+                    <div className="absolute -top-4 left-0 flex items-center gap-1 bg-white/30 backdrop-blur-md rounded-full px-1 py-0.5 border border-white/50 shadow-sm z-20">
                         <button
                             onClick={() => setActiveTab('ASR')}
                             className={clsx(
-                                'px-4 py-2 text-sm font-bold',
-                                'bg-white/70 backdrop-blur-sm border border-white/50',
-                                activeTab === 'ASR' ? 'text-blue-600' : 'text-gray-400'
+                                'px-4 py-1.5 text-sm font-semibold rounded-full transition',
+                                activeTab === 'ASR'
+                                    ? 'bg-white text-blue-600 shadow shadow-blue-200'
+                                    : 'text-black/80 hover:text-black'
                             )}
-                            style={{ borderBottomWidth: 0 }}
                         >
                             ASR
                         </button>
                         <button
                             onClick={() => setActiveTab('LLM')}
                             className={clsx(
-                                'px-4 py-2 text-sm font-bold',
-                                'bg-white/70 backdrop-blur-sm border border-white/50',
-                                activeTab === 'LLM' ? 'text-pink-600' : 'text-gray-400'
+                                'px-4 py-1.5 text-sm font-semibold rounded-full transition',
+                                activeTab === 'LLM'
+                                    ? 'bg-white text-pink-600 shadow shadow-pink-200'
+                                    : 'text-black/80 hover:text-black'
                             )}
-                            style={{ borderBottomWidth: 0 }}
                         >
                             LLM
                         </button>

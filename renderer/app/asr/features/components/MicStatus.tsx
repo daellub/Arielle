@@ -67,7 +67,10 @@ export default function MicStatus() {
 
 
     return (
-        <div className='flex flex-col justify-between w-[300px] h-[250px] p-[24px] bg-white rounded-[30px] shadow-[inset_0_0_10px_rgba(0,0,0,0.1)] border border-gray-200'>
+        <div className="flex flex-col justify-between w-[300px] h-[250px] px-6 py-6 
+            bg-white/50 backdrop-blur-md border border-white/10 
+            shadow-[inset_0_4px_12px_rgba(0,0,0,0.08)] rounded-2xl transition-all"
+        >
             <div className='flex items-center justify-between text-[18px] font-semibold text-black mb-1'>
                 <span>Mic Status</span>
                 <div className={`w-[12px] h-[12px] rounded-full shadow-sm ${statusColor}`} />

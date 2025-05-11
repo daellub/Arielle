@@ -86,7 +86,7 @@
             <>
                 <AnimatePresence>
                     {isVisible && (
-                        <div className='fixed inset-0 backdrop-blur-sm flex justify-end z-50'>
+                        <div className='fixed inset-0 backdrop-blur-sm flex justify-end z-[9999]'>
                             <motion.div
                                 initial={{ opacity: 0, x: '100%' }}
                                 animate={{ opacity: 1, x: 0 }}

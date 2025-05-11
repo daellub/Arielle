@@ -1,14 +1,71 @@
 'use client'
 
-import Sidebar from '@/app/components/ui/Sidebar'
+import Image from 'next/image'
+import { AnimatePresence, motion } from 'motion/react'
+import { useEffect, useRef, useState } from 'react'
+import HomeDetail from './HomeDetail'
 
-export default function HomePage() {
+export default function HomePage({ selectedTab }: { selectedTab: string }) {
+    const [showDetail, setShowDetail] = useState(false)
+    const isVisible = selectedTab === 'Home'
+    const prevVisible = useRef(true)
+
+    useEffect(() => {
+        if (prevVisible.current && !isVisible) {
+            setTimeout(() => {
+                window.scrollTo({ top: 0, behavior: 'auto' })
+            }, 50)
+        }
+        prevVisible.current = isVisible
+    }, [isVisible])
+
     return (
-        <div className="flex bg-white">
-            <div className="p-6 text-black">
-                <h1 className="text-3xl font-bold">🏠 Home</h1>
-                <p className="mt-2">Welcome to Project Arielle Dashboard.</p>
-            </div>
+        <div className="relative w-full min-h-screen bg-[#f6f7fb]">
+            <AnimatePresence mode="wait">
+                {showDetail ? (
+                    <motion.div
+                        className="relative"
+                        whileHover={{
+                            rotateX: 5,
+                            rotateY: -5,
+                            scale: 1.03,
+                            transition: { type: 'spring', stiffness: 200, damping: 12 }
+                        }}
+                    >
+                        <HomeDetail onBack={() => setShowDetail(false)} />
+                    </motion.div>
+                ) : (
+                    <motion.section
+                        key="hero"
+                        initial={{ opacity: 0, y: 40 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 40 }}
+                        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                        className="min-h-screen px-60 py-20 grid grid-cols-1 md:grid-cols-2 items-center absolute inset-0"
+                    >
+                        <div className="space-y-4">
+                            <h1 className="text-5xl font-bold text-gray-900">Project Arielle</h1>
+                            <p className="text-lg text-gray-700">AI 멀티모달 프로젝트</p>
+                            <p className="text-sm text-gray-500">ASR → 번역 → LLM → TTS → VRM</p>
+                            <button
+                                className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-xl shadow-md hover:bg-blue-700 hover:shadow-lg hover:scale-[1.02] transition"
+                                onClick={() => setShowDetail(true)}
+                            >
+                                시작하기 →
+                            </button>
+                        </div>
+                        <div className="flex justify-center">
+                            <Image
+                                src="/assets/arielle.png"
+                                alt="Arielle Character"
+                                width={320}
+                                height={480}
+                                className="rounded-2xl shadow-2xl object-cover"
+                            />
+                        </div>
+                    </motion.section>
+                )}
+            </AnimatePresence>
         </div>
     )
 }

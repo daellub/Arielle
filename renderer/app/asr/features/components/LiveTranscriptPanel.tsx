@@ -155,7 +155,10 @@ export default function LiveTranscriptPanel() {
 
     return (
         <>
-            <div className='max-w-[600px] min-w-[600px] max-h-[250px] p-7 rounded-[30px] bg-white shadow-md border border-gray-200'>
+            <div className="w-[600px] h-[250px] px-6 py-6 
+                bg-white/50 backdrop-blur-md border border-white/10 
+                shadow-[0_4px_12px_rgba(0,0,0,0.08)] rounded-2xl transition-all"
+            >
                 <div className='flex items-center justify-between mb-3'>
                     <span className='text-[18px] font-semibold text-black'>LIVE Transcribe</span>
                     <div className='flex gap-10 text-sm'>

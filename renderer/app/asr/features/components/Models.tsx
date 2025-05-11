@@ -7,18 +7,12 @@ import { motion, AnimatePresence } from 'motion/react'
 import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
 
-import AddModel from '@/app/asr/features/components/AddModel'
-import { fetchModels } from '@/app/asr/features/utils/api'
 import ModelPopup from '@/app/asr/features/components/ModelPopup'
 import { useNotificationStore } from '@/app/store/useNotificationStore'
-import ConfirmPopup from './ConfirmPopup'
-import SettingsPanel from './Settings'
 import { useSelectedModelStore } from '@/app/asr/features/store/useSelectedModelStore'
 import { Model, ModelStatus } from '@/app/asr/features/types/Model'
-import { useDownload } from './DownloadContext'
 import { Download } from 'lucide-react'
 import { DownloadPanel } from './DownloadPanel'
-import ModelInfoPopup from './ModelInfoPopup'
 
 // 레이턴시 파싱
 const parseLatency = (latency: string | number | null | undefined): number => {
@@ -81,94 +75,33 @@ const StatusIndicator = ({ status }: { status: ModelStatus }) => (
     )} />
 );
 
-export default function Models() {
-    type ExtendedModel = Model & { isVisible?: boolean }
-    const [models, setModels] = useState<ExtendedModel[]>([])
+interface Props {
+    onOpenSettings: () => void
+    onOpenAddModel: () => void
+    onModelAdded?: () => void
+    onOpenModelInfo: (model: Model) => void
+    onRequestDelete: (model: Model) => void
+    models: Model[]
+    refreshModels: (context?: 'refresh' | 'add' | 'delete' | 'manual' | 'load' | 'unload') => void
+}
+
+export default function Models({ onOpenSettings, onOpenAddModel, onModelAdded, onOpenModelInfo, onRequestDelete, models, refreshModels }: Props) {
     const { selectedModel, setSelectedModel, clearSelectedModel } = useSelectedModelStore()
     const [menuOpen, setMenuOpen] = useState(false);
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false)
     const [contextMenu, setContextMenu] = useState<{ x: number; y: number; model?: Model } | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const [popupVisible, setPopupVisible] = useState(false)
     const [loadingModelId, setLoadingModelId] = useState<string | null>(null)
-    const [confirmOpen, setConfirmOpen] = useState(false)
-    const [modelToDelete, setModelToDelete] = useState<Model | null>(null)
-    const [showSettings, setShowSettings] = useState(false)
     const [isDownloadOpen, setDownloadOpen] = useState(false)
     const panelRef = useRef<HTMLDivElement>(null)
     const downloadBtnRef = useRef<HTMLButtonElement>(null)
-    const [showModelInfo, setShowModelInfo] = useState(false)
-    const [infoModel, setInfoModel] = useState<Model | null>(null)
 
     const notify = useNotificationStore((s) => s.show)
-
-    const closeModelInfo = () => {
-        setShowModelInfo(false)
-        setTimeout(() => setInfoModel(null), 300) // 애니메이션 끝나고 제거
-    }
-
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const data = await fetchModels()
-                
-                setModels(data)
-            } catch (err) {
-                console.error('[모델 목록 불러오기 실패] ', err)
-            }
-        }
-        fetchData()
-    }, [])
-
-    const updateModelStatus = (modelId: string, status: ModelStatus) => {
-        setModels(prev =>
-            prev.map(m =>
-                m.id === modelId ? { ...m, status } : m
-            )
-        );
-    };
-
-    const requestDeleteModel = (model: Model) => {
-        setModelToDelete(model)
-        setConfirmOpen(true)
-    }
 
     const handleModelClick = (model: Model) => {
         setSelectedModel(model)
         setPopupVisible(true)
     };
-
-    const handleDeleteModel = async (modelId: string) => {
-        try {
-            const res = await fetch(`http://localhost:8000/asr/models/${modelId}`, {
-                method: "DELETE",
-            })
-    
-            if (!res.ok) throw new Error("삭제 실패!")
-    
-            notify('모델을 삭제했습니다.', 'success')
-
-            setModels(prev =>
-                prev.map(m =>
-                    m.id === modelId ? { ...m, isVisible: false } : m
-                )
-            )
-
-            setContextMenu(null)
-        } catch (err) {
-            console.error("모델 삭제 실패:", err)
-            notify('모델 삭제를 실패했습니다.', 'error')
-        }
-    }
-
-    const handleRefresh = async () => {
-        try {
-            const data = await fetchModels()
-            setModels(data)
-        } catch (err) {
-            console.error("새로고침 실패: ", err)
-        }
-    }
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -189,14 +122,12 @@ export default function Models() {
         return () => window.removeEventListener("click", handleClickOutside);
     }, [])
 
-    useEffect(() => {
-        fetchModels().then(setModels).catch(console.error)
-    }, [])
-
     return (
         <>
             <section className={clsx(
-                "relative w-full min-w-[300px] max-w-[300px] min-h-[665px] max-h-[665px] max-h-[665px] ml-[80px] mt-[20px] px-6 py-6 bg-white rounded-lg shadow-md transition-all overflow-visible"
+                "relative w-full min-w-[300px] max-w-[300px] min-h-[665px] max-h-[665px] ml-[80px] mt-[20px] px-6 py-6",
+                "bg-white/50 backdrop-blur-md border border-white/10 shadow-[inset_0_4px_12px_rgba(0,0,0,0.08)]",
+                "rounded-2xl transition-all overflow-visible"
             )}>
                 <div className='flex items-center justify-between mb-4'>
                     <div className='relative' ref={panelRef}>
@@ -252,7 +183,7 @@ export default function Models() {
                                         className='w-full text-left font-MapoPeacefull px-4 py-2 text-sm text-blue-400 hover:bg-gray-100 hover:rounded-lg flex items-center gap-x-2'
                                         onClick={() => {
                                             setMenuOpen(false)
-                                            setIsAddModalOpen(true)
+                                            onOpenAddModel()
                                         }}
                                     >
                                         <Image 
@@ -267,7 +198,7 @@ export default function Models() {
                                         className="w-full text-left font-MapoPeacefull px-4 py-2 text-sm text-green-400 hover:bg-gray-100 hover:rounded-lg flex items-center gap-x-2"
                                         onClick={() => {
                                             setMenuOpen(false)
-                                            handleRefresh()
+                                            refreshModels('refresh')
                                         }}
                                     >
                                         <Image 
@@ -282,7 +213,7 @@ export default function Models() {
                                         className="w-full text-left font-MapoPeacefull px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 hover:rounded-lg flex items-center gap-x-2"
                                         onClick={() => {
                                             setMenuOpen(false)
-                                            setShowSettings(true)
+                                            onOpenSettings()
                                         }}
                                     >
                                         <Image 
@@ -305,19 +236,13 @@ export default function Models() {
                 ) : (
                     <div className="grid grid-cols-1 gap-8">
                         <AnimatePresence>
-                        {models.map((model, i) => (
-                            model.isVisible !== false && (
+                            {models.map((model, i) => (
                                 <motion.div
                                     key={model.id}
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, y: -10 }}
                                     transition={{ duration: 0.3 }} // delay: i * 0.05 
-                                    onAnimationComplete={() => {
-                                        if (model.isVisible === false) {
-                                            setModels(prev => prev.filter(m => m.id !== model.id))
-                                        }
-                                    }}
                                     className={clsx(
                                         'flex flex-col p-3 pb-0 rounded-lg border cursor-pointer transition-all w-full',
                                         selectedModel?.name === model.name 
@@ -432,7 +357,8 @@ export default function Models() {
                                                 className="block w-full text-left px-2 py-1 hover:bg-gray-200 rounded-lg" 
                                                 onClick={() => {
                                                     if (contextMenu.model) {
-                                                        requestDeleteModel(contextMenu.model)
+                                                        onRequestDelete(contextMenu.model)
+                                                        setContextMenu(null)
                                                     } 
                                                 }}>
                                                 모델 삭제
@@ -441,8 +367,7 @@ export default function Models() {
                                                 className="block w-full text-left px-2 py-1 hover:bg-gray-200 rounded-lg"
                                                 onClick={() => {
                                                     if (contextMenu.model) {
-                                                        setInfoModel(contextMenu.model)
-                                                        setShowModelInfo(true)
+                                                        onOpenModelInfo(contextMenu.model)
                                                         setContextMenu(null)
                                                     }
                                                 }}
@@ -455,8 +380,8 @@ export default function Models() {
                                         </div>
                                     )}
                                 </motion.div>
-                            )
-                        ))}
+                                )
+                            )}
                         </AnimatePresence>
                     </div>
                 )}
@@ -472,12 +397,10 @@ export default function Models() {
                             if (!selectedModel.id) return
 
                             setLoadingModelId(selectedModel.id)
-                            updateModelStatus(selectedModel.id, 'loading')
 
                             try {
                                 await axios.post(`http://localhost:8000/asr/models/load/${selectedModel?.id}`)
-                                notify('모델을 로드했습니다.', 'success')
-                                await handleRefresh()
+                                refreshModels('load')
                             } catch (err) {
                                 console.error("모델 로드 실패: ", err)
                                 notify('모델 로드를 실패했습니다.', 'error')
@@ -496,12 +419,10 @@ export default function Models() {
                                 const res = await axios.post(`http://localhost:8000/asr/models/unload/${selectedModel?.id}`) 
                             
                                 if (res.data.status === 'success') {
-                                    notify('모델을 언로드했습니다.', 'success')
+                                    refreshModels('unload')
                                 } else {
                                     notify('선택된 모델이 이미 언로드 상태이거나 없는 모델입니다.', 'error')
                                 }
-                            
-                                await handleRefresh()
                             } catch (err) {
                                 console.error("모델 언로드 실패: ", err)
                                 notify('모델 언로드에 실패했습니다.', 'error')
@@ -510,42 +431,6 @@ export default function Models() {
                             }
                         }}
                         loadingModelId={loadingModelId}
-                    />
-                )}
-                <AddModel 
-                    open={isAddModalOpen}
-                    onClose={() => setIsAddModalOpen(false)}
-                    onModelAdded={() => {
-                        fetchModels()
-                        handleRefresh()
-                    }}
-                />
-                <ConfirmPopup
-                    open={confirmOpen}
-                    title="모델 삭제"
-                    description={`정말 "${modelToDelete?.name}" 모델을 삭제하시겠습니까?`}
-                    confirmText="삭제"
-                    cancelText="취소"
-                    type="danger"
-                    onConfirm={async () => {
-                        if (!modelToDelete) return
-                        setConfirmOpen(false)
-                        await handleDeleteModel(modelToDelete.id)
-                        setModelToDelete(null)
-                    }}
-                    onCancel={() => {
-                        setConfirmOpen(false)
-                        setModelToDelete(null)
-                    }}
-                />
-                {showSettings && (
-                    <SettingsPanel onClose={() => setShowSettings(false)} />
-                )}
-                {showModelInfo && infoModel && (
-                    <ModelInfoPopup
-                        model={infoModel}
-                        visible={showModelInfo}
-                        onClose={closeModelInfo}
                     />
                 )}
             </section>

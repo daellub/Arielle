@@ -1,0 +1,60 @@
+/* app/pages/LLMPage.module.css */
+
+/* 전체 배경 */
+.container {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    overflow: hidden;
+    background: radial-gradient(circle at center, #f4f1fa 0%, #e8dbf3 45%, #c8bdeb 70%, #a99fd7 100%);
+}
+
+.container::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, #e7d8ff 20%, transparent 80%);
+    opacity: 0.2;
+    filter: blur(100px);
+    animation: pulse 6s ease-in-out infinite;
+    z-index: 0;
+}
+
+/* 퍼지는 pulse 오오라 */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 0.2;
+    }
+    50% {
+        opacity: 0.4;
+    }
+}
+
+/* 떠다니는 sparkle 입자 */
+@keyframes float {
+    0% {
+        transform: translateY(0px);
+        opacity: 0.2;
+    }
+    50% {
+        transform: translateY(-10px);
+        opacity: 0.4;
+    }
+    100% {
+        transform: translateY(0px);
+        opacity: 0.2;
+    }
+}
+
+.sparkle {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: white;
+    border-radius: 9999px;
+    opacity: 0.6;
+    filter: blur(1px) drop-shadow(0 0 6px #ffffff88);
+    animation: float 4s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 2;
+}

@@ -133,7 +133,7 @@ export default function TranslationHistoryList({ items, setItems }: TranslationH
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="원문 텍스트로 검색..."
-                    className="flex-1 px-4 py-2 text-sm rounded-lg bg-white/10 border border-blue-300 text-black placeholder-gray-400 focus:outline-none"
+                    className="flex-1 px-4 py-2 text-sm rounded-lg bg-white/10 border border-blue-300 text-black placeholder-gray-400 focus:outline-none z-10"
                 />
 
                 <div className="flex items-center gap-2">
@@ -182,7 +182,7 @@ export default function TranslationHistoryList({ items, setItems }: TranslationH
                     <div
                         key={item.id}
                         onClick={() => setSelected(item)}
-                        className="p-4 rounded-xl space-y-2 bg-white/10 border border-white/20 backdrop-blur-md shadow-md hover:shadow-lg hover:-translate-y-1 transition-all relative"
+                        className="p-4 rounded-xl space-y-2 bg-white/10 z-10 border border-white/20 backdrop-blur-md shadow-md hover:shadow-lg hover:-translate-y-1 transition-all relative"
                     >
                         {/* 퀵 액션 */}
                         <div className="absolute top-2 right-2 flex gap-1">

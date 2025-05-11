@@ -5,16 +5,26 @@ import { useEffect, useRef, useState } from 'react'
 import axios from 'axios'
 import { Languages } from 'lucide-react'
 
-import Sidebar from '@/app/components/ui/Sidebar'
 import TranslatePanel from '@/app/translate/features/components/TranslatePanel'
 import TranslationHistoryList, { TranslationHistoryItem } from '../translate/features/components/TranslateHistoryList'
 import TranslationAnalyticsPanel from '../translate/features/components/TranslateAnalyticsPanel'
+
+import styles from './TranslatePage.module.css'
+
+interface Sparkle {
+    top: string
+    left: string
+    delay: string
+    duration: string
+}
 
 export default function TranslatePage() {
     const [items, setItems] = useState<TranslationHistoryItem[]>([])
 
     const [asrInput, setAsrInput] = useState('')
     const prevAsrRef = useRef('')
+
+    const [sparkles, setSparkles] = useState<Sparkle[]>([])
 
     useEffect(() => {
         const interval = setInterval(async () => {
@@ -33,6 +43,16 @@ export default function TranslatePage() {
         return () => clearInterval(interval)
     })
 
+    useEffect(() => {
+        const generated = Array.from({ length: 20 }, () => ({
+            top: `${Math.random() * 100}%`,
+            left: `${Math.random() * 100}%`,
+            delay: `${Math.random() * 5}s`,
+            duration: `${3 + Math.random() * 2}s`,
+        }))
+        setSparkles(generated)
+    }, [])
+
     const totalCount = items.length
     const llmCount = items.filter(item => item.source === 'LLM').length
     const asrCount = items.filter(item => item.source === 'ASR').length
@@ -40,38 +60,52 @@ export default function TranslatePage() {
     const favoriteCount = items.filter(item => item.favorite).length
 
     return (
-        <div className="flex bg-white h-full overflow-hidden">
-            <div className="flex-1 flex flex-col overflow-hidden">
-                <div className='flex-1 flex flex-col gap-6 overflow-y-auto px-20 pt-3 pb-20'>
-                    {/* 타이틀 */}
-                    <div className="flex items-center gap-4">
-                        <Languages className="w-7 h-7 text-blue-400" />
-                        <h1 className="text-2xl font-bold text-black">Translate</h1>
-                    </div>
-
-                    <div className="flex gap-6 w-full items-start">
-                        {/* 번역 패널 */}
-                        <div className="flex-[3] max-w-[800px]">
-                            <TranslatePanel
-                                asrResult={asrInput}
-                                onTranslate={(item) => setItems(prev => [item, ...prev])} 
-                                items={items}
-                            />
+        <div className={styles.container}>
+            {sparkles.map((s, i) => (
+                <div
+                    key={i}
+                    className={styles.sparkle}
+                    style={{
+                        top: s.top,
+                        left: s.left,
+                        animationDelay: s.delay,
+                        animationDuration: s.duration,
+                    }}
+                />
+            ))}
+            <div className="flex h-full overflow-hidden p-6 relative z-10">
+                <div className="flex-1 flex flex-col overflow-hidden">
+                    <div className='flex-1 flex flex-col gap-6 overflow-y-auto px-20 pt-3 pb-20'>
+                        {/* 타이틀 */}
+                        <div className="flex items-center gap-4">
+                            <Languages className="w-7 h-7 text-blue-400" />
+                            <h1 className="text-2xl font-bold text-black">Translate</h1>
                         </div>
 
-                        {/* 통계 패널 */}
-                        <div className="flex-[1] grid grid-cols-2 gap-4 min-w-[240px]">
-                            <TranslationAnalyticsPanel
-                            total={totalCount}
-                            llmRatio={llmRatio}
-                            asrCount={asrCount}
-                            favoriteCount={favoriteCount}
-                            llmFeatureEnabled={false}
-                            />
+                        <div className="flex gap-6 w-full items-start z-10">
+                            {/* 번역 패널 */}
+                            <div className="flex-[3] max-w-[800px]">
+                                <TranslatePanel
+                                    asrResult={asrInput}
+                                    onTranslate={(item) => setItems(prev => [item, ...prev])} 
+                                    items={items}
+                                />
+                            </div>
+
+                            {/* 통계 패널 */}
+                            <div className="flex-[1] grid grid-cols-2 gap-4 min-w-[240px] z-10">
+                                <TranslationAnalyticsPanel
+                                total={totalCount}
+                                llmRatio={llmRatio}
+                                asrCount={asrCount}
+                                favoriteCount={favoriteCount}
+                                llmFeatureEnabled={false}
+                                />
+                            </div>
                         </div>
+                        
+                        <TranslationHistoryList items={items} setItems={setItems} />
                     </div>
-                    
-                    <TranslationHistoryList items={items} setItems={setItems} />
                 </div>
             </div>
         </div>

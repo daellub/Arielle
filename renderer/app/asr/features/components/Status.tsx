@@ -8,6 +8,7 @@ import {
     TooltipTrigger,
     TooltipProvider
 } from '@/app/components/ui/tooltip'
+import clsx from 'clsx'
 
 import { Layers, HelpCircle } from 'lucide-react'
 import { useMicStore } from '@/app/asr/features/store/useMicStore'
@@ -72,7 +73,11 @@ export default function SystemStatus() {
     ]
 
     return (
-        <div className="bg-white shadow-md rounded-[32px] p-5 w-[260px] h-[320px] max-h-[320px] mt-5">
+        <div className="w-[260px] h-[320px] max-h-[320px] mt-5 
+            bg-white/50 backdrop-blur-md border border-white/10 
+            shadow-[0_4px_12px_rgba(0,0,0,0.08)] 
+            rounded-2xl px-6 py-6 transition-all overflow-hidden"
+        >
             {/* 헤더 영역 */}
             <div className="flex items-center justify-between gap-3 mb-6">
                 <div className='flex items-center gap-3'>

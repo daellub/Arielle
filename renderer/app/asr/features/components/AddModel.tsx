@@ -196,7 +196,7 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
 
     return (
         <>
-            <div className="fixed inset-0 bg-opacity-30 text-black backdrop-blur-sm flex justify-center items-center z-50">
+            <div className="fixed inset-0 bg-black/20 text-black flex justify-center items-center z-[9999]">
                 <div className="bg-white p-6 rounded-lg w-[400px] shadow-lg">
                     <h3 className="text-lg font-MapoPeacefull font-semibold mb-4">모델 추가</h3>
         

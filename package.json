@@ -21,6 +21,7 @@
         "typescript": "^5.8.3"
     },
     "dependencies": {
+        "@headlessui/react": "^2.2.2",
         "@picovoice/web-voice-processor": "^4.0.9",
         "@radix-ui/react-dialog": "^1.1.13",
         "@ricky0123/vad-web": "^0.0.22",

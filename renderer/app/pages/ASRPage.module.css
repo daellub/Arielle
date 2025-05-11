@@ -1,0 +1,58 @@
+/* app/pages/ASRPage.module.css */
+
+/* 전체 배경 */
+.container {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    overflow: hidden;
+    background: radial-gradient(circle at center, #eef4ff 0%, #e0ebff 40%, #d4e3ff 70%, #cadbff 100%);
+}
+
+.container::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, #c6dcff 20%, transparent 80%);
+    opacity: 0.06;
+    filter: blur(100px);
+    animation: pulse 6s ease-in-out infinite;
+    z-index: 0;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 0.06;
+    }
+    50% {
+        opacity: 0.12;
+    }
+}
+
+@keyframes float {
+    0% {
+        transform: translateY(0px);
+        opacity: 0.2;
+    }
+    50% {
+        transform: translateY(-10px);
+        opacity: 0.4;
+    }
+    100% {
+        transform: translateY(0px);
+        opacity: 0.2;
+    }
+}
+
+.sparkle {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: white;
+    border-radius: 9999px;
+    opacity: 0.3;
+    filter: blur(1px) drop-shadow(0 0 5px #ffffff66);
+    animation: float 4s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 5;
+}
