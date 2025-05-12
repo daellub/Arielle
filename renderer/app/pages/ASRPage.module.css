@@ -4,7 +4,7 @@
 .container {
     position: relative;
     width: 100%;
-    min-height: 100vh;
+    height: 100%;
     overflow: hidden;
     background: radial-gradient(circle at center, #eef4ff 0%, #e0ebff 40%, #d4e3ff 70%, #cadbff 100%);
 }

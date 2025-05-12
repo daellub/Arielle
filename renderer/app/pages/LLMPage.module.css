@@ -3,8 +3,6 @@
 /* 전체 배경 */
 .container {
     position: relative;
-    width: 100%;
-    min-height: 100vh;
     overflow: hidden;
     background: radial-gradient(circle at center, #f4f1fa 0%, #e8dbf3 45%, #c8bdeb 70%, #a99fd7 100%);
 }

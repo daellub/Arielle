@@ -131,7 +131,7 @@ export default function Home() {
                 }, 0)
             }}
         >
-            <div className={styles.container}>
+            <div className={styles.container + " w-full h-full flex flex-col overflow-hidden"}>
                 {sparkles.map((s, i) => (
                     <div
                         key={i}
@@ -145,7 +145,7 @@ export default function Home() {
                     />
                 ))}
             
-                <div className="relative z-10 flex p-6">
+                <div className="flex-1 overflow-y-auto relative z-10 flex p-6">
                     <Models 
                         onOpenSettings={() => setShowSettings(true)} 
                         onOpenAddModel={() => setShowAddModel(true)}

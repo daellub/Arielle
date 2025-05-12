@@ -3,7 +3,7 @@
 .container {
     position: relative;
     width: 100%;
-    min-height: 100vh;
+    height: 100%;
     overflow: hidden;
     background: radial-gradient(circle at center, #fafdff 0%, #f0f5ff 45%, #e2ecfd 70%, #d2e0fa 100%);
     backdrop-filter: saturate(180%) blur(5px);

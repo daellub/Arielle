@@ -6,19 +6,14 @@
     /* 여기에 padding 은 이미 JSX 에서 주고 있으므로, 추가 조정은 필요 시만 */
 }
 
-/* 스크롤 컨테이너: 내부 로그 전체를 감싸는 div */
 .scrollContainer {
-    /* 높이를 패널 높이에서 헤더·필터·보더 등을 뺀 값으로 설정 */
-    max-height: calc(320px - 56px - 80px); /* 예: 전체 320px - 헤더 56px - 필터 48px */
-    height: calc(320px - 56px - 80px);
+    height: 100%;
     overflow-y: auto;
-    /* rounded-b-[30px] 은 JSX 에서 주고 있으므로 여기서는 border-radius 생략 */
-    position: relative; /* 자식 절대배치 기준 */
+    position: relative;
     scrollbar-width: thin;
     scrollbar-color: #52525b transparent;
 }
 
-/* WebKit 기반 스크롤바 커스터마이징 */
 .scrollContainer::-webkit-scrollbar {
     width: 8px;
 }

@@ -34,13 +34,9 @@ export default function TranslatePanel({ asrResult, onTranslate, items }: Props)
     const notify = useNotificationStore((s) => s.show)
 
     const { send } = useLLMStream()
-    const { addMessage } = useLLMStore.getState()
+    const addMessage = useLLMStore((s) => s.addMessage)
 
-    // LLM 훅
-    const { messages, loading: llmLoading, error: llmError, send: sendLLM } = useLLM()
-
-    // LLM 전송 여부 체크박스
-    const [shouldSendLLM, setShouldSendLLM] = useState(false)
+    const [shouldSendLLM, setShouldSendLLM] = useState(true)
 
     useEffect(() => {
         if (!asrResult?.trim()) return
@@ -105,9 +101,17 @@ export default function TranslatePanel({ asrResult, onTranslate, items }: Props)
             setLastTranslatedTime(new Date().toLocaleString())
             notify('번역이 완료되었습니다.', 'success')
             if (shouldSendLLM) {
-                const userMsg = res.data.translated
-                addMessage({ role: 'user', message: userMsg })
-                send(userMsg)
+                const userMsgKo = text
+                const userMsgEn = res.data.translated
+
+                addMessage({
+                    role: 'user',
+                    message: userMsgEn,
+                    translatedMessage: userMsgKo,
+                    name: 'You',
+                    isFinal: true
+                })
+                send(userMsgEn)
                 setLastSourceType('Direct')
             }
         } catch (err) {

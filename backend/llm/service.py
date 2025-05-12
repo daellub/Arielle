@@ -129,7 +129,8 @@ async def websocket_chat(ws: WebSocket):
 
                 await ws.send_json({
                     "type": "interaction_id",
-                    "id": interaction_id
+                    "id": interaction_id,
+                    "translated": ko_translation
                 })
 
             except Exception as e:

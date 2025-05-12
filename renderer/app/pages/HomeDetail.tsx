@@ -18,7 +18,7 @@ export default function HomeDetail({ onBack }: { onBack: () => void }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 30 }}
             transition={{ duration: 0.4 }}
-            className="w-full h-full px-60 py-15 overflow-y-auto"
+            className="w-full h-full overflow-y-auto px-60 py-15"
         >
             <div className="flex justify-between items-center mb-8">
                 <h2 className="text-3xl font-bold text-gray-800">Arielle 기능 개요</h2>

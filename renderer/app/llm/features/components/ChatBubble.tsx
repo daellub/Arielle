@@ -19,7 +19,10 @@ export default function ChatBubble({ index, lang }: ChatBubbleProps) {
     const [visible, setVisible] = useState(false)
     const [displayed, setDisplayed] = useState('')
 
-    const content = lang === 'ko' && !isUser ? messageObj.translatedMessage || messageObj.message : messageObj.message
+    const content = 
+        lang === 'ko'
+            ? messageObj.translatedMessage || messageObj.message
+            : messageObj.message
 
     const handleFeedback = async (rating: 'up' | 'down') => {
         if (!interactionId || feedback) return

@@ -34,7 +34,13 @@ export default function RootLayout({
                 <DownloadProvider>
                     <MagicCircle />
                     <RecordingStatusIndicator />
-                    {children}
+                    
+                    <div className="w-full h-full flex flex-col overflow-hidden">
+                        <div className="flex-1 overflow-y-auto">
+                            {children}
+                        </div>
+                    </div>
+
                     <Notification />
                 </DownloadProvider>
             </body>

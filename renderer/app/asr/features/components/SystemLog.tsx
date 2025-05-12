@@ -36,21 +36,18 @@ export default function SystemLog() {
     const [filteredLogs, setFilteredLogs] = useState<LogEntry[]>([])
     const [isSearching, setIsSearching] = useState(false)
     
-    // 필터 토글
     const toggleFilter = (type: LogEntry['type']) => {
         setFilterTypes(prev =>
             prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
         )
     }
 
-    // 디스플레이 로그
     const displayedLogs = (searchQuery ? filteredLogs : logs).filter(
         (log) =>
             (filterTypes.length === 0 || filterTypes.includes(log.type)) &&
             log.message.toLowerCase().includes(searchQuery.toLowerCase())
     )
 
-    // 날짜 포맷
     function formatDate(raw: string) {
         const d = new Date(raw)
         const yyyy = d.getFullYear()
@@ -78,7 +75,6 @@ export default function SystemLog() {
         return score
     }
 
-    // 연관 로그 추천어 기능
     useEffect(() => {
         if (!searchQuery.trim()) {
             setSuggestions([])
@@ -97,7 +93,6 @@ export default function SystemLog() {
         return () => clearTimeout(id)
     }, [searchQuery])
 
-    // 실제 로그 검색
     const fetchLogs = async (q: string) => {
         const res = await axios.get('http://localhost:8000/asr/logs', {
             params: { query: q }
@@ -115,7 +110,6 @@ export default function SystemLog() {
         fetchLogs(kw)
     }
 
-    // 마운트 이후 실시간 fetch (since: mountTime)
     useEffect(() => {
         if (searchQuery.trim()) return
     
@@ -144,7 +138,6 @@ export default function SystemLog() {
         return () => clearInterval(iv)
     }, [searchQuery])
     
-    // 차트 데이터 생성
     useEffect(() => {
         if (logs.length === 0) {
             const pts: ChartDataPoint[] = []
@@ -191,7 +184,6 @@ export default function SystemLog() {
         })
     }, [logs])
 
-    // 현재 시각 업데이트
     useEffect(() => {
         const iv = setInterval(() => {
             setNow(new Date().toLocaleString('ko-KR', {
@@ -208,8 +200,14 @@ export default function SystemLog() {
     useEffect(() => {
         const prev = prevCountRef.current
         const curr = displayedLogs.length
-        if (curr > prev) {
-            logEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+        if (curr > prev && logEndRef.current) {
+            const container = logEndRef.current.closest(`.${styles.scrollContainer}`)
+            if (container) {
+                container.scrollTo({
+                    top: container.scrollHeight,
+                    behavior: 'smooth',
+                })
+            }
         }
         prevCountRef.current = curr
     }, [displayedLogs])
@@ -224,34 +222,26 @@ export default function SystemLog() {
                 onSelect={handleSelect}
             />
             <div className='relative'>
-                <div className="w-[640px] h-[320px] max-h-[320px] mt-5 
-                    bg-white/50 backdrop-blur-md border border-white/10 
-                    shadow-[inset_0_4px_12px_rgba(0,0,0,0.08)] 
-                    rounded-2xl px-6 py-6 transition-all overflow-hidden"
-                >
-                    <div className="flex justify-between items-center mb-1">
+                <div className="w-[640px] h-[320px] mt-5 bg-white/50 backdrop-blur-md border border-white/10 shadow-[inset_0_4px_12px_rgba(0,0,0,0.08)] rounded-2xl px-6 py-5 transition-all overflow-hidden flex flex-col">
+                    <div className="shrink-0 flex justify-between items-center mb-2">
                         <div className="flex p-3 items-center gap-4">
                             <h3 className="text-lg text-[27px] text-black">Log</h3>
                             <span className="px-3 py-2 bg-black text-white text-[13px] text-sm rounded-full">
                                 +{displayedLogs.length}
                             </span>
                         </div>
-
-                        {/* 시간 */}
-                        <div className='flex items-center gap-3'>
-                            <Clock className='w-8 h-8 text-black' />
-                            <div className='text-xs text-black'>
-                                <div className='font-medium text-[14px]'>Time</div>
-                                <div className='font-TheCircleM text-[12px] tracking-[-0.035em]'>{now}</div>
+                        <div className="flex items-center gap-3">
+                            <Clock className="w-8 h-8 text-black" />
+                            <div className="text-xs text-black">
+                                <div className="font-medium text-[14px]">Time</div>
+                                <div className="font-TheCircleM text-[12px] tracking-[-0.035em]">{now}</div>
                             </div>
                         </div>
-
-                        {/* 활동 */}
-                        <div className='flex items-center gap-2'>
-                            <BarChart3 className='w-7.5 h-7.5 text-black' />
+                        <div className="flex items-center gap-2">
+                            <BarChart3 className="w-7.5 h-7.5 text-black" />
                             <div>
                                 <span className="text-xs text-black text-[13px]">Activities</span>
-                                <div className="w-[120px] aspect-[3.33]">
+                                <div className="w-[120px] h-[36px]">
                                     <ResponsiveContainer width="100%" height={36}>
                                         <LineChart data={chartData}>
                                             <XAxis dataKey="name" hide />
@@ -262,58 +252,35 @@ export default function SystemLog() {
                                                     borderRadius: '6px',
                                                     boxShadow: '0 0 6px rgba(0,0,0,0.2)',
                                                 }}
-                                                formatter={(value: number, name: string) =>
-                                                    [`${value}`, name === 'cl' ? '현재' : '이전']
-                                                }
+                                                formatter={(v: number, name: string) => [`${v}`, name === 'cl' ? '현재' : '이전']}
                                             />
-                                            <Line
-                                                type="monotone"
-                                                dataKey="cl"
-                                                stroke="#000"
-                                                strokeWidth={2}
-                                                dot={false}
-                                                activeDot={{ r: 4, stroke: '#000', strokeWidth: 1.5, fill: '#fff' }}
-                                                isAnimationActive={true}
-                                            />
-                                            <Line
-                                                type="monotone"
-                                                dataKey="pl"
-                                                stroke="gray"
-                                                strokeWidth={2}
-                                                strokeOpacity={0.5}
-                                                dot={false}
-                                                isAnimationActive={true}
-                                            />
+                                            <Line type="monotone" dataKey="cl" stroke="#000" strokeWidth={2} dot={false} />
+                                            <Line type="monotone" dataKey="pl" stroke="gray" strokeWidth={2} strokeOpacity={0.5} dot={false} />
                                         </LineChart>
                                     </ResponsiveContainer>
                                 </div>
                             </div>
                         </div>
                     </div>
-                                                
-                    {/* 필터 버튼 */}
-                    <div className="flex gap-2 px-3 mb-3">
+
+                    <div className="shrink-0 flex gap-2 px-3 mb-2">
                         {['INFO', 'ERROR', 'PROCESS', 'DB', 'RESULT'].map((type) => (
                             <button
                                 key={type}
                                 onClick={() => toggleFilter(type as any)}
-                                className={`text-xs px-3 py-1 rounded-full border transition ` +
-                                    (filterTypes.includes(type as any)
+                                className={`text-xs px-3 py-1 rounded-full border transition ${
+                                    filterTypes.includes(type as any)
                                         ? 'bg-black text-white'
-                                        : 'bg-white text-black border-zinc-300')
-                                }
+                                        : 'bg-white text-black border-zinc-300'
+                                }`}
                             >
                                 {type}
                             </button>
                         ))}
                     </div>
                     
-                    {/* 로그 */}
-                    <div className="bg-black text-white rounded-[30px] overflow-hidden">
-                        <div 
-                            className={`${styles.scrollContainer} rounded-b-[30px]`}
-                        >
-                            
+                    <div className="flex-1 min-h-0 bg-black text-white rounded-[30px] overflow-hidden">
+                        <div className={`${styles.scrollContainer} h-full`}>
                             {displayedLogs.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-full space-y-2">
                                     <FileText className="w-12 h-12 text-gray-500" />
@@ -322,20 +289,20 @@ export default function SystemLog() {
                                         로그가 없습니다. 필터를 해제하거나 새로운 로그를 기다려보세요.
                                     </div>
                                 </div>
-                                ) : (
-                                <div className={`${styles.logTextArea} px-6 py-5 text-sm font-DungGeunMo space-y-3`} style={{ userSelect: 'text' }}>
+                            ) : (
+                                <div className={`${styles.logTextArea} px-6 py-4 text-sm font-DungGeunMo space-y-3`} style={{ userSelect: 'text' }}>
                                     {isSearching
-                                    ? [...Array(6)].map((_, i) => (
-                                        <div key={i} className="h-[14px] bg-neutral-700 rounded animate-pulse w-[80%]" />
+                                        ? [...Array(6)].map((_, i) => (
+                                            <div key={i} className="h-[14px] bg-neutral-700 rounded animate-pulse w-[80%]" />
                                         ))
-                                    : displayedLogs.map((log, idx) => (
-                                        <div key={idx}>
-                                            [{log.timestamp}] [{log.type}] {log.message}
-                                        </div>
+                                        : displayedLogs.map((log, idx) => (
+                                            <div key={idx}>
+                                                [{log.timestamp}] [{log.type}] {log.message}
+                                            </div>
                                         ))}
                                     <div ref={logEndRef} />
                                 </div>
-                                )}
+                            )}
                         </div>
                     </div>
                 </div>

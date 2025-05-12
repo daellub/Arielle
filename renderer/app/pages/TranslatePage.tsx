@@ -60,7 +60,7 @@ export default function TranslatePage() {
     const favoriteCount = items.filter(item => item.favorite).length
 
     return (
-        <div className={styles.container}>
+        <div className={`${styles.container} w-full h-full flex flex-col overflow-hidden`}>
             {sparkles.map((s, i) => (
                 <div
                     key={i}
@@ -73,39 +73,36 @@ export default function TranslatePage() {
                     }}
                 />
             ))}
-            <div className="flex h-full overflow-hidden p-6 relative z-10">
-                <div className="flex-1 flex flex-col overflow-hidden">
-                    <div className='flex-1 flex flex-col gap-6 overflow-y-auto px-20 pt-3 pb-20'>
-                        {/* 타이틀 */}
-                        <div className="flex items-center gap-4">
-                            <Languages className="w-7 h-7 text-blue-400" />
-                            <h1 className="text-2xl font-bold text-black">Translate</h1>
+            <div className="flex-1 overflow-y-auto relative z-10 p-6">
+                <div className="flex-1 flex flex-col gap-6 px-20 pt-3 pb-20">
+                    {/* 타이틀 */}
+                    <div className="flex items-center gap-4">
+                        <Languages className="w-7 h-7 text-blue-400" />
+                        <h1 className="text-2xl font-bold text-black">Translate</h1>
+                    </div>
+
+                    {/* 번역 입력 & 통계 */}
+                    <div className="flex gap-6 w-full items-start z-10">
+                        <div className="flex-[3] max-w-[800px]">
+                            <TranslatePanel
+                                asrResult={asrInput}
+                                onTranslate={(item) => setItems(prev => [item, ...prev])}
+                                items={items}
+                            />
                         </div>
-
-                        <div className="flex gap-6 w-full items-start z-10">
-                            {/* 번역 패널 */}
-                            <div className="flex-[3] max-w-[800px]">
-                                <TranslatePanel
-                                    asrResult={asrInput}
-                                    onTranslate={(item) => setItems(prev => [item, ...prev])} 
-                                    items={items}
-                                />
-                            </div>
-
-                            {/* 통계 패널 */}
-                            <div className="flex-[1] grid grid-cols-2 gap-4 min-w-[240px] z-10">
-                                <TranslationAnalyticsPanel
+                        <div className="flex-[1] grid grid-cols-2 gap-4 min-w-[240px] z-10">
+                            <TranslationAnalyticsPanel
                                 total={totalCount}
                                 llmRatio={llmRatio}
                                 asrCount={asrCount}
                                 favoriteCount={favoriteCount}
                                 llmFeatureEnabled={false}
-                                />
-                            </div>
+                            />
                         </div>
-                        
-                        <TranslationHistoryList items={items} setItems={setItems} />
                     </div>
+
+                    {/* 번역 기록 */}
+                    <TranslationHistoryList items={items} setItems={setItems} />
                 </div>
             </div>
         </div>

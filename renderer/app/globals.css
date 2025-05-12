@@ -233,6 +233,14 @@
   animation: dropReveal 0.8s ease-out forwards;
 }
 
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;     /* Firefox */
+}
+
 .input {
   @apply w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm;
 }
@@ -243,7 +251,9 @@ body {
 
 html, body {
   height: 100%;
-  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
 }
 
 @layer base {
