@@ -9,6 +9,7 @@ import CharacterStatusCard from '@/app/llm/features/components/CharacterStatusCa
 import LLMSystemStats from '@/app/llm/features/components/LLMStatusCard'
 import SectionTimerCard from '@/app/llm/features/components/SectionTimerCard'
 import MCPPanel from '@/app/llm/features/components/MCPPanel'
+import LLMDebugInputPanel from '../llm/features/components/LLMDebugInputPanel'
 
 interface Sparkle {
     top: string
@@ -122,6 +123,7 @@ export default function LLMPage() {
                                 <ChatBubbleList language={langTab === '원어' ? 'en' : 'ko'} />
                             </motion.div>
                         </AnimatePresence>
+                        <LLMDebugInputPanel />
                     </div>
                     <MCPPanel />
                 </div>

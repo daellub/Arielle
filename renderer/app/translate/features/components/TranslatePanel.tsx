@@ -6,10 +6,14 @@ import clsx from 'clsx'
 import { MessageSquareText, Languages, Sparkles } from 'lucide-react'
 import TranslateCard from './TranslateCard'
 import { TranslationHistoryItem } from './TranslateHistoryList'
+import { useLLM } from '@/app/llm/hooks/useLLM'
 import axios from 'axios'
 
 import { useNotificationStore } from '@/app/store/useNotificationStore'
 import ExportDropdown from '../utils/ExportDropdown'
+
+import { useLLMStream } from '@/app/llm/hooks/useLLMStream'
+import { useLLMStore } from '@/app/llm/features/store/useLLMStore'
 
 interface Props {
     asrResult?: string
@@ -28,6 +32,15 @@ export default function TranslatePanel({ asrResult, onTranslate, items }: Props)
     const [lastSourceType, setLastSourceType] = useState<'ASR' | 'Direct' | 'None'>('None')
     const [activeTab, setActiveTab] = useState<'ASR' | 'LLM'>('ASR')
     const notify = useNotificationStore((s) => s.show)
+
+    const { send } = useLLMStream()
+    const { addMessage } = useLLMStore.getState()
+
+    // LLM 훅
+    const { messages, loading: llmLoading, error: llmError, send: sendLLM } = useLLM()
+
+    // LLM 전송 여부 체크박스
+    const [shouldSendLLM, setShouldSendLLM] = useState(false)
 
     useEffect(() => {
         if (!asrResult?.trim()) return
@@ -91,6 +104,12 @@ export default function TranslatePanel({ asrResult, onTranslate, items }: Props)
             onTranslate(item)
             setLastTranslatedTime(new Date().toLocaleString())
             notify('번역이 완료되었습니다.', 'success')
+            if (shouldSendLLM) {
+                const userMsg = res.data.translated
+                addMessage({ role: 'user', message: userMsg })
+                send(userMsg)
+                setLastSourceType('Direct')
+            }
         } catch (err) {
             console.error('번역 실패:', err)
             notify('번역 중 오류가 발생했습니다.', 'error')
@@ -105,10 +124,17 @@ export default function TranslatePanel({ asrResult, onTranslate, items }: Props)
                     rows={1}
                     placeholder="번역할 문장을 입력하세요..."
                     spellCheck={false}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
                 />
 
                 <label className="flex items-center gap-2 text-sm text-gray-600 whitespace-nowrap cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" />
+                    <input
+                        type="checkbox"
+                        checked={shouldSendLLM}
+                        onChange={e => setShouldSendLLM(e.target.checked)}
+                        className="sr-only peer"
+                    />
                     <div className="w-5 h-5 border border-gray-400 rounded-sm peer-checked:bg-indigo-500 flex items-center justify-center transition">
                         <svg
                             className="w-3 h-3 text-white hidden peer-checked:block"
@@ -124,7 +150,6 @@ export default function TranslatePanel({ asrResult, onTranslate, items }: Props)
                 </label>
             </div>
             
-            {/* 상단 번역 카드들 */}
             <div className="flex flex-col lg:flex-row gap-4 items-stretch z-10">
                 <div className='w-full md:w-[250px] lg:w-[270px] h-full z-10'>
                     <TranslateCard
@@ -153,7 +178,6 @@ export default function TranslatePanel({ asrResult, onTranslate, items }: Props)
                     />
                 </div>
 
-                {/* 탭 + 카드 */}
                 <div
                     className={clsx(
                         'relative w-full md:w-[250px] lg:w-[270px] h-full',
@@ -164,7 +188,6 @@ export default function TranslatePanel({ asrResult, onTranslate, items }: Props)
                         'font-MapoPeacefull text-bold'
                     )}
                 >
-                    {/* 탭 버튼 그룹 */}
                     <div className="absolute -top-4 left-0 flex items-center gap-1 bg-white/30 backdrop-blur-md rounded-full px-1 py-0.5 border border-white/50 shadow-sm z-20">
                         <button
                             onClick={() => setActiveTab('ASR')}
@@ -190,9 +213,7 @@ export default function TranslatePanel({ asrResult, onTranslate, items }: Props)
                         </button>
                     </div>
 
-                    {/* 카드 콘텐츠 */}
                     <div className="pt-8 px-5 pb-5 bg-white rounded-b-lg">
-                        {/* 제목 */}
                         <div className="flex items-center gap-3 mb-4">
                             <Languages
                                 className={clsx(
@@ -209,7 +230,6 @@ export default function TranslatePanel({ asrResult, onTranslate, items }: Props)
                                 {activeTab === 'ASR' ? 'ASR 번역 결과' : 'LLM 번역 결과'}
                             </h3>
                         </div>
-                        {/* 본문 */}
                         <p className="text-sm leading-relaxed text-gray-800 font-MapoPeacefull">
                             {activeTab === 'ASR'
                                 ? translated || '번역 결과 없음'
@@ -230,7 +250,6 @@ export default function TranslatePanel({ asrResult, onTranslate, items }: Props)
                 </div>
             </div>
 
-            {/* 하단 액션 영역 */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <div className="flex items-center gap-2 text-xs text-gray-600 mb-2">

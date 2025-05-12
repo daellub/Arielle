@@ -1,79 +1,120 @@
 // app/llm/features/components/ChatBubble.tsx
 'use client'
 
+import axios from 'axios'
 import { useEffect, useState } from 'react'
+import { ThumbsUp, ThumbsDown } from 'lucide-react'
+import clsx from 'clsx'
+import { useLLMStore } from '../store/useLLMStore'
 
 interface ChatBubbleProps {
-  role: 'user' | 'assistant'
-  message: string
-  name?: string
+    index: number
 }
 
-export default function ChatBubble({ role, message, name }: ChatBubbleProps) {
-  const isUser = role === 'user'
-  const [visible, setVisible] = useState(false)
-  const [displayed, setDisplayed] = useState('')
+export default function ChatBubble({ index }: ChatBubbleProps) {
+    const messageObj = useLLMStore((s) => s.messages[index])
+    const isUser = messageObj.role === 'user'
+    const { message, name, interactionId, isFinal, feedback } = messageObj
+    const [visible, setVisible] = useState(false)
+    const [displayed, setDisplayed] = useState('')
 
-  // 등장 애니메이션 활성화
-  useEffect(() => {
-    const timeout = setTimeout(() => setVisible(true), 50)
-    return () => clearTimeout(timeout)
-  }, [])
+    const handleFeedback = async (rating: 'up' | 'down') => {
+        console.log('🧪 클릭됨:', { interactionId, feedback, rating })
 
-  // 타이핑 효과 (assistant만)
-  useEffect(() => {
-    if (isUser || !visible) {
-      setDisplayed(message) // 유저 메시지는 바로 출력
-      return
+        if (!interactionId || feedback) return
+
+        await axios.post('http://localhost:8000/llm/feedback', {
+            interaction_id: interactionId,
+            rating,
+            tone_score: rating === 'up' ? 1.0 : 0.0
+        })
+
+        useLLMStore.setState((state) => {
+            const updated = [...state.messages]
+            if (updated[index]) updated[index].feedback = rating
+            return { messages: updated }
+        })
     }
 
-    let i = 0
-    const interval = setInterval(() => {
-      i++
-      setDisplayed(message.slice(0, i))
-      if (i >= message.length) clearInterval(interval)
-    }, 15)
+    useEffect(() => {
+        const timeout = setTimeout(() => setVisible(true), 50)
+        return () => clearTimeout(timeout)
+    }, [])
 
-    return () => clearInterval(interval)
-  }, [visible, message, isUser])
+    useEffect(() => {
+    if (isUser || !visible || !isFinal) {
+            setDisplayed(message)
+            return
+        }
 
-  return (
-    <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div
-        className={`
-          flex flex-col max-w-[75%] space-y-1 transform transition-all duration-700
-          ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'}
-          ${isUser ? 'items-end' : 'items-start'}
-        `}
-      >
-        {/* 이름 (assistant만) */}
-        {!isUser && name && (
-          <div
-            className="text-sm text-[#d2baff] font-semibold drop-shadow-md px-1"
-            style={{ animation: 'floatGlow 3.5s ease-in-out infinite' }}
-          >
-            {name}
-          </div>
-        )}
+        let i = 0
+        const interval = setInterval(() => {
+            i++
+            setDisplayed(message.slice(0, i))
+            if (i >= message.length) clearInterval(interval)
+        }, 15)
 
-        {/* 말풍선 */}
-        <div
-          className={`
-            px-5 py-4 text-sm leading-relaxed whitespace-pre-wrap
-            rounded-[24px] backdrop-blur-md border
-            transition-all duration-300 ease-in-out
-            border-white/10 text-white animate-fade-in animate-soft-pulse
-            shadow-[0_8px_24px_rgba(180,160,255,0.12)]
-            ${isUser
-              ? 'bg-gradient-to-br from-white/10 to-white/5 rounded-br-md'
-              : 'bg-gradient-to-br from-[#caaaff1a] to-[#dccbff0a] border-purple-100/20 rounded-bl-md'
-            }
-          `}
-        >
-          {displayed}
+        return () => clearInterval(interval)
+    }, [visible, message, isUser, isFinal])
+
+    return (
+        <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
+            <div
+                className={clsx(
+                    'flex flex-col max-w-[75%] space-y-1 transform transition-all duration-700',
+                    visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3',
+                    isUser ? 'items-end' : 'items-start'
+                )}
+            >
+                {!isUser && name && (
+                    <div
+                        className="text-sm text-[#d2baff] font-semibold drop-shadow-md px-1"
+                        style={{ animation: 'floatGlow 3.5s ease-in-out infinite' }}
+                    >
+                        {name}
+                    </div>
+                )}
+
+                <div
+                    className={`
+                        px-5 py-4 text-sm leading-relaxed whitespace-pre-wrap
+                        rounded-[24px] backdrop-blur-md border
+                        transition-all duration-300 ease-in-out
+                        border-white/10 text-white animate-fade-in animate-soft-pulse
+                        shadow-[0_8px_24px_rgba(180,160,255,0.12)]
+                        ${isUser
+                            ? 'bg-gradient-to-br from-white/10 to-white/5 rounded-br-md'
+                            : 'bg-gradient-to-br from-[#caaaff1a] to-[#dccbff0a] border-purple-100/20 rounded-bl-md'
+                        }
+                    `}
+                >
+                    {displayed}
+                </div>
+
+                {!isUser && (
+                    <div className="flex items-center gap-2 mt-1 ml-1 text-xs text-gray-400">
+                        <button
+                            onClick={() => handleFeedback('up')}
+                            className={clsx(
+                                'transition',
+                                feedback === 'up' ? 'text-green-500' : 'hover:text-green-500'
+                            )}
+                        >
+                            <ThumbsUp className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => handleFeedback('down')}
+                            className={clsx(
+                                'transition',
+                                feedback === 'down' ? 'text-red-500' : 'hover:text-red-500'
+                            )}
+                        >
+                            <ThumbsDown className="w-4 h-4" />
+                        </button>
+                    </div>
+                )}
+            </div>
         </div>
-      </div>
-    </div>
-  )
+    )
 }
 

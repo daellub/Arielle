@@ -11,7 +11,7 @@ import PromptsPanel from './mcp/PromptsPanels'
 import ToolsPanel from './mcp/ToolsPanel'
 import MemoryContextPanel from './mcp/MemoryContextPanel'
 import SamplingPanel from './mcp/SamplingPanel'
-import SecurityPanel from './SecurityPanel'
+import SecurityPanel from './mcp/SecurityPanel'
 import LogsPanel from './mcp/LogPanel'
 
 const tabs = [
@@ -45,7 +45,7 @@ export default function MCPPanel() {
                 ))}
             </div>
 
-            <div className="text-sm text-white/80 mt-4 relative h-[400px] overflow-hidden">
+            <div className="text-sm text-white/80 mt-4 relative h-[400px]">
                 <AnimatePresence mode="wait">
                     <motion.div 
                         key={selected}

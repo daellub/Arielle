@@ -1,3 +1,4 @@
+// app/AppContainer.tsx
 'use client'
 
 import { useTabStore } from '@/app/store/tabStore'
@@ -22,19 +23,10 @@ export default function AppContainer() {
     const setSelectedTab = useTabStore((state) => state.setSelectedTab)
     const prevTab = useRef<string>(selectedTab)
 
-    useEffect(() => {
-        if (prevTab.current === 'Home' && selectedTab !== 'Home') {
-            setTimeout(() => {
-                window.scrollTo({ top: 0, behavior: 'auto' })
-            }, 0)
-        }
-        prevTab.current = selectedTab
-    }, [selectedTab])
-
     return (
         <div className="flex h-screen overflow-hidden bg-transparent relative">
             <Sidebar selected={selectedTab} onSelect={setSelectedTab} />
-            <div className="flex-1 overflow-visible relative">
+            <div className="flex-1 relative">
                 <AnimatePresence mode="wait">
                     <motion.div
                         key={selectedTab + '-bg'}
@@ -42,7 +34,7 @@ export default function AppContainer() {
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.4 }}
-                        className="absolute inset-0 z-0"
+                        className="absolute inset-0 z-0 overflow-hidden"
                         style={{
                         background: tabBackgrounds[selectedTab],
                         willChange: 'opacity',

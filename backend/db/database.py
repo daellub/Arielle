@@ -179,3 +179,82 @@ def save_translation_result(client_id: str, original: str, translated: str, targ
     finally:
         if conn:
             conn.close()
+
+def save_llm_interaction(
+    model_name: str,
+    request: str,
+    response: str,
+    translate_response: str,
+    ja_translate_response: str
+) -> int:
+    conn = None
+    try:
+        conn = get_connection()
+        with conn.cursor() as cursor:
+            sql = """
+                INSERT INTO llm_interactions 
+                (model_name, request, response, translate_response, ja_translate_response)
+                VALUES (%s, %s, %s, %s, %s)
+            """
+            cursor.execute(sql, (
+                model_name,
+                request,
+                response,
+                translate_response,
+                ja_translate_response
+            ))
+            interaction_id = cursor.lastrowid
+        conn.commit()
+        print("\033[94m" + "[DB] LLM interaction이 저장되었습니다.\n")
+        return interaction_id
+    except Exception as e:
+        print("\033[91m" + f"[ERROR] LLM 저장 실패: {e}" + "\033[0m")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+def save_llm_feedback(interaction_id: int, rating: str | None, tone_score: float):
+    """
+    LLM 피드백 저장 (up/down/null + tone_score)
+    """
+    conn = None
+    try:
+        conn = get_connection()
+        with conn.cursor() as cursor:
+            sql = """
+                INSERT INTO llm_feedback (interaction_id, rating, tone_score)
+                VALUES (%s, %s, %s)
+            """
+            cursor.execute(sql, (interaction_id, rating, tone_score))
+        conn.commit()
+        print("\033[94m" + "[DB] LLM 피드백이 저장되었습니다.\n")
+    except Exception as e:
+        print("\033[91m" + f"[ERROR] 피드백 저장 실패: {e}" + "\033[0m")
+    finally:
+        if conn:
+            conn.close()
+
+
+def get_llm_interactions(limit: int = 100):
+    """
+    최근 대화 이력(limit 개) 조회
+    """
+    conn = None
+    try:
+        conn = get_connection()
+        with conn.cursor(pymysql.cursors.DictCursor) as cursor:
+            sql = """
+                SELECT id, model_name, request, response, created_at
+                FROM llm_interactions
+                ORDER BY created_at DESC
+                LIMIT %s
+            """
+            cursor.execute(sql, (limit,))
+            return cursor.fetchall()
+    except Exception as e:
+        print("\033[91m" + f"[ERROR] LLM 이력 조회 실패: {e}" + "\033[0m")
+        return []
+    finally:
+        if conn:
+            conn.close()

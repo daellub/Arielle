@@ -1,153 +1,200 @@
-// app/llm/features/components/mcp/MemoryContextPanel.tsx
 'use client'
 
 import { useState } from 'react'
-import { SlidersHorizontal, Trash2, Plus, NotepadText, BookMinus } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import {
+    SlidersHorizontal,
+    NotepadText,
+    Plus,
+    Save,
+    X,
+    Trash2,
+    RefreshCw,
+    ToggleLeft,
+    ToggleRight
+} from 'lucide-react'
+import clsx from 'clsx'
 
-const strategies = ['None', 'Window', 'Summary', 'Hybrid']
+const strategies = ['None', 'Window', 'Summary', 'Hybrid'] as const
+
+type Strategy = typeof strategies[number]
+
+interface MemoryPrompt {
+    id: number
+    content: string
+    enabled: boolean
+}
 
 export default function MemoryContextPanel() {
-    const [strategy, setStrategy] = useState('Hybrid')
+    const [strategy, setStrategy] = useState<Strategy>('Hybrid')
     const [maxTokens, setMaxTokens] = useState(2048)
     const [includeHistory, setIncludeHistory] = useState(true)
     const [saveMemory, setSaveMemory] = useState(true)
-    const [showPromptModal, setShowPromptModal] = useState(false)
+    const [prompts, setPrompts] = useState<MemoryPrompt[]>([
+        { id: 1, content: 'You are a helpful assistant that always answers kindly.', enabled: true },
+        { id: 2, content: 'User is roleplaying a medieval knight in a fantasy world.', enabled: true }
+    ])
+    const [showAddModal, setShowAddModal] = useState(false)
     const [newPrompt, setNewPrompt] = useState('')
 
-    const dummyPrompts = [
-        'You are a helpful assistant that always answers kindly.',
-        'User is roleplaying a medieval knight in a fantasy world.'
-    ]
+    const togglePrompt = (id: number) => {
+        setPrompts(prev => prev.map(p => p.id === id ? { ...p, enabled: !p.enabled } : p))
+    }
+
+    const removePrompt = (id: number) => {
+        setPrompts(prev => prev.filter(p => p.id !== id))
+    }
+
+    const addPrompt = () => {
+        const nextId = prompts.length ? Math.max(...prompts.map(p => p.id)) + 1 : 1
+        setPrompts(prev => [...prev, { id: nextId, content: newPrompt.trim(), enabled: true }])
+        setNewPrompt('')
+        setShowAddModal(false)
+    }
 
     return (
-        <div className="space-y-5">
-            <div className="flex items-center gap-2 font-semibold text-white">
+        <div className="space-y-4">
+            {/* Header */}
+            <div className="flex items-center gap-2 text-white font-semibold">
                 <SlidersHorizontal className="w-4 h-4 text-white/70" />
-                Memory / Context 설정
+                <span>Memory / Context 설정</span>
             </div>
 
+            {/* Settings */}
             <div className="space-y-3">
-                <div className="flex justify-between items-start">
-                    <div className="flex flex-col">
-                        <span className="text-white font-medium">Memory Strategy</span>
-                        <span className="text-white/40 text-[10px]">컨텍스트 전략 방식</span>
-                    </div>
+                <div className="flex justify-between items-center p-2 bg-white/5 rounded">
+                    <span className="text-sm text-white">Memory Strategy</span>
                     <select
+                        className="bg-white/10 text-white text-sm rounded px-2 py-1"
                         value={strategy}
-                        onChange={(e) => setStrategy(e.target.value)}
-                        className="text-sm bg-white/10 text-white rounded px-2 py-1"
+                        onChange={e => setStrategy(e.target.value as Strategy)}
                     >
-                        {strategies.map((s) => (
-                        <option key={s} value={s} className="text-black">{s}</option>
+                        {strategies.map(s => (
+                            <option key={s} value={s} className="text-black">{s}</option>
                         ))}
                     </select>
                 </div>
-
-                <div className="flex justify-between items-start">
-                    <div className="flex flex-col">
-                        <span className="text-white font-medium">Max Tokens</span>
-                        <span className="text-white/40 text-[10px]">기억할 최대 토큰 수</span>
-                    </div>
+                <div className="flex justify-between items-center p-2 bg-white/5 rounded">
+                    <span className="text-sm text-white">Max Tokens</span>
                     <input
                         type="number"
+                        className="bg-white/10 text-white text-sm rounded px-2 py-1 w-[100px]"
                         value={maxTokens}
-                        onChange={(e) => setMaxTokens(Number(e.target.value))}
-                        className="text-sm bg-white/10 text-white rounded px-2 py-1 w-[100px]"
+                        onChange={e => setMaxTokens(Number(e.target.value))}
                     />
                 </div>
-
-                <div className="flex justify-between items-center">
-                    <span className="text-white font-medium">Include History</span>
-                    <input
-                        type="checkbox"
-                        checked={includeHistory}
-                        onChange={() => setIncludeHistory(!includeHistory)}
-                        className="w-4 h-4 accent-indigo-500"
-                    />
+                <div className="flex justify-between items-center p-2 bg-white/5 rounded">
+                    <span className="text-sm text-white">Include History</span>
+                    <button
+                        className="text-white/40 hover:text-white"
+                        onClick={() => setIncludeHistory(!includeHistory)}
+                    >
+                        {includeHistory
+                            ? <ToggleRight className="w-5 h-5 text-indigo-400" />
+                            : <ToggleLeft className="w-5 h-5 text-white/40" />
+                        }
+                    </button>
                 </div>
-
-                <div className="flex justify-between items-center">
-                    <span className="text-white font-medium">Save Memory</span>
-                    <input
-                        type="checkbox"
-                        checked={saveMemory}
-                        onChange={() => setSaveMemory(!saveMemory)}
-                        className="w-4 h-4 accent-indigo-500"
-                    />
+                <div className="flex justify-between items-center p-2 bg-white/5 rounded">
+                    <span className="text-sm text-white">Save Memory</span>
+                    <button
+                        className="text-white/40 hover:text-white"
+                        onClick={() => setSaveMemory(!saveMemory)}
+                    >
+                        {saveMemory
+                            ? <ToggleRight className="w-5 h-5 text-indigo-400" />
+                            : <ToggleLeft className="w-5 h-5 text-white/40" />
+                        }
+                    </button>
                 </div>
             </div>
 
+            {/* Prompts List */}
             <div className="space-y-2">
-                <div className="flex items-center gap-2 font-semibold text-white">
+                <div className="flex items-center gap-2 text-white font-semibold">
                     <NotepadText className="w-4 h-4 text-white/70" />
-                    컨텍스트 프롬프트
+                    <span>컨텍스트 프롬프트</span>
                 </div>
-
-                {dummyPrompts.map((p, i) => (
-                    <div key={i} className="flex justify-between items-start ml-0.5">
-                        <div className="flex flex-col">
-                            <span className="text-white text-sm font-medium truncate max-w-[240px]">{p}</span>
-                            <span className="text-white/40 text-[10px]">ContextPrompt #{i + 1}</span>
+                {prompts.map(p => (
+                    <div
+                        key={p.id}
+                        className="flex justify-between items-start p-2 bg-white/5 rounded break-all"
+                    >
+                        <div className="flex-1 text-xs text-white">{p.content}</div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                className="text-white/40 hover:text-white"
+                                onClick={() => togglePrompt(p.id)}
+                            >
+                                {p.enabled
+                                    ? <ToggleRight className="w-5 h-5 text-indigo-400" />
+                                    : <ToggleLeft className="w-5 h-5 text-white/40" />
+                                }
+                            </button>
+                            <button
+                                className="text-white/30 hover:text-red-400"
+                                onClick={() => removePrompt(p.id)}
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </button>
                         </div>
-                        <button className="text-white/30 hover:text-red-400">
-                            <Trash2 className="w-3.5 h-3.5" />
-                        </button>
                     </div>
                 ))}
-
                 <button
-                    onClick={() => setShowPromptModal(true)}
-                    className="flex items-center gap-1 text-xs text-indigo-300 hover:text-indigo-400 mt-1"
+                    onClick={() => setShowAddModal(true)}
+                    className="flex items-center gap-1 text-xs text-indigo-300 hover:text-indigo-400"
                 >
                     <Plus className="w-4 h-4" />
                     프롬프트 추가
                 </button>
             </div>
 
-            <div className="pt-1">
-                <button className="flex items-center gap-1.5 text-xs text-red-400 hover:underline">
-                    <BookMinus className="w-4 h-4" />
-                    메모리 초기화
-                </button>
-            </div>
-
-            {showPromptModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
-                    <div className="bg-[#2c2c3d] rounded-lg p-6 space-y-4 w-[320px]">
-                        <div className="text-white font-semibold text-sm">새 프롬프트 추가</div>
+            {/* Add Prompt Modal */}
+            {showAddModal && createPortal(
+                <div
+                    className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                    onClick={() => setShowAddModal(false)}
+                >
+                    <div
+                        className="bg-[#2c2c3d] rounded-lg p-6 space-y-4 w-full max-w-sm max-h-[90vh] overflow-auto"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-center">
+                            <h4 className="text-lg font-semibold text-white flex items-center gap-2">
+                                <Save className="w-5 h-5 text-white/60" />
+                                새 프롬프트 등록
+                            </h4>
+                            <button
+                                onClick={() => setShowAddModal(false)}
+                                className="text-white/50 hover:text-white"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
                         <textarea
                             rows={4}
                             className="w-full p-2 rounded bg-white/10 text-white text-sm placeholder-white/30"
                             placeholder="예: You are a helpful assistant..."
                             value={newPrompt}
-                            onChange={(e) => setNewPrompt(e.target.value)}
+                            onChange={e => setNewPrompt(e.target.value)}
                         />
-
                         <div className="flex justify-end gap-2 pt-2">
                             <button
-                                onClick={() => {
-                                    setShowPromptModal(false)
-                                    setNewPrompt('')
-                                }}
+                                onClick={() => setShowAddModal(false)}
                                 className="text-xs text-white/50"
-                            >
-                                취소
-                            </button>
+                            >취소</button>
                             <button
-                                disabled={newPrompt.trim().length === 0}
-                                onClick={() => {
-                                    console.log('등록된 프롬프트:', newPrompt)
-                                    setShowPromptModal(false)
-                                    setNewPrompt('')
-                                }}
-                                className="text-xs text-indigo-300 disabled:opacity-30"
+                                disabled={!newPrompt.trim()}
+                                onClick={addPrompt}
+                                className="text-xs text-indigo-300 disabled:opacity-30 flex items-center gap-1"
                             >
-                                등록
+                                <Save className="w-4 h-4" /> 등록
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
-        </div>      
+        </div>
     )
 }

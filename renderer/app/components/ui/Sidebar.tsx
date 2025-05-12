@@ -48,7 +48,7 @@ export default function Sidebar({
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
-            {/* 로고 */}
+
             <div className="flex flex-col gap-9 px-3 pt-5">
                 <div className="flex items-center justify-center w-full pt-5">
                     <Image src="/assets/Logo.png" alt="Logo" width={60} height={45} className='min-w-[60px] min-h-[45px]' />
@@ -66,7 +66,7 @@ export default function Sidebar({
                     ))}
                 </div>
             </div>
-            {/* 다크모드 토글 */}
+            
             <div className="flex flex-col px-3 pb-8">
                 <SidebarItem icon={Moon} label="Dark Mode" showText={hovered}/>
             </div>

@@ -1,10 +1,12 @@
 # backend/main.py
 
+import sys
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from contextlib import asynccontextmanager
 import socketio
 
 from backend.sio import sio
@@ -21,6 +23,9 @@ import backend.asr.socket_handlers
 from backend.translate.api import router as translate_api_router
 from backend.translate.service import router as translate_router
 from backend.translate.routes.asr import router as fetching_asr_router
+
+# LLM 백엔드 라이브러리
+from backend.llm.service import router as llm_router
 
 from backend.db.database import save_log_to_db
 
@@ -44,6 +49,7 @@ fastapi_app.include_router(model_router, prefix='/api', tags='Model')
 fastapi_app.include_router(translate_api_router, prefix='/api', tags='Translate')
 fastapi_app.include_router(fetching_asr_router, prefix='/api', tags='ASR Fetch')
 fastapi_app.include_router(translate_router, prefix='/translate', tags='Save Translate Result')
+fastapi_app.include_router(llm_router, prefix='/llm', tags='LLM')
 
 app = socketio.ASGIApp(
     socketio_server=sio, 
