@@ -20,7 +20,7 @@ export default function ChatBubbleList({ language }: Props) {
             <SparkParticlesContainer />
             <div style={{ position: 'relative', zIndex: 1 }} className="flex flex-col space-y-5 px-2 py-2">
                 {messages.map((_, idx) => (
-                    <ChatBubble key={idx} index={idx} />
+                    <ChatBubble key={idx} index={idx} lang={language} />
                 ))}
                 <StreamingIndicator visible={isStreaming} />
             </div>

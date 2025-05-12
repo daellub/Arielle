@@ -10,6 +10,7 @@ interface LLMChatMessage {
     interactionId?: number
     isFinal?: boolean
     feedback?: 'up' | 'down'
+    translatedMessage?: string
 }
 
 interface LLMChatStore {

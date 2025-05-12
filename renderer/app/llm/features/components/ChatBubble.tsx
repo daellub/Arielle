@@ -9,18 +9,19 @@ import { useLLMStore } from '../store/useLLMStore'
 
 interface ChatBubbleProps {
     index: number
+    lang: 'ko' | 'en'
 }
 
-export default function ChatBubble({ index }: ChatBubbleProps) {
+export default function ChatBubble({ index, lang }: ChatBubbleProps) {
     const messageObj = useLLMStore((s) => s.messages[index])
     const isUser = messageObj.role === 'user'
-    const { message, name, interactionId, isFinal, feedback } = messageObj
+    const { name, interactionId, isFinal, feedback } = messageObj
     const [visible, setVisible] = useState(false)
     const [displayed, setDisplayed] = useState('')
 
-    const handleFeedback = async (rating: 'up' | 'down') => {
-        console.log('🧪 클릭됨:', { interactionId, feedback, rating })
+    const content = lang === 'ko' && !isUser ? messageObj.translatedMessage || messageObj.message : messageObj.message
 
+    const handleFeedback = async (rating: 'up' | 'down') => {
         if (!interactionId || feedback) return
 
         await axios.post('http://localhost:8000/llm/feedback', {
@@ -43,19 +44,19 @@ export default function ChatBubble({ index }: ChatBubbleProps) {
 
     useEffect(() => {
     if (isUser || !visible || !isFinal) {
-            setDisplayed(message)
+            setDisplayed(content)
             return
         }
 
         let i = 0
         const interval = setInterval(() => {
             i++
-            setDisplayed(message.slice(0, i))
-            if (i >= message.length) clearInterval(interval)
+            setDisplayed(content.slice(0, i))
+            if (i >= content.length) clearInterval(interval)
         }, 15)
 
         return () => clearInterval(interval)
-    }, [visible, message, isUser, isFinal])
+    }, [visible, content, isUser, isFinal])
 
     return (
         <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'}`}>
