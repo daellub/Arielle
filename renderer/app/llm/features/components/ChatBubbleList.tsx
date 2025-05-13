@@ -7,8 +7,6 @@ import ChatBubble from './ChatBubble'
 import { useEffect, useRef } from 'react'
 import { useLLMStore } from '@/app/llm/features/store/useLLMStore'
 
-import styles from '@/app/styles/ScrollArea.module.css'
-
 interface Props {
     language: 'ko' | 'en'
 }
@@ -40,7 +38,7 @@ export default function ChatBubbleList({ language }: Props) {
             <SparkParticlesContainer />
             <div
                 ref={scrollRef}
-                className={`${styles.scrollArea} flex flex-col space-y-5 px-2 py-2 pr-3`}
+                className="scrollLLMArea max-h-[475px] overflow-y-auto flex flex-col space-y-5 px-2 py-2 pr-4"
             >
                 {messages.map((_, idx) => (
                     <ChatBubble key={idx} index={idx} lang={language} />

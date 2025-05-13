@@ -1,11 +1,13 @@
+// app/llm/features/components/mcp/data/RemoteSourcesPanel.tsx
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
     Trash2,
     RefreshCw,
     Globe,
+    X,
     Lock,
     CheckCircle,
     XCircle,
@@ -17,7 +19,16 @@ import {
 } from 'lucide-react'
 import clsx from 'clsx'
 
+import {
+    getRemoteSources, 
+    addRemoteSource,
+    updateRemoteSource,
+    deleteRemoteSource
+} from '@/app/llm/hooks/useMCPSource'
+import { useNotificationStore } from '@/app/store/useNotificationStore'
+
 interface RemoteSource {
+    id?: number
     name: string
     endpoint: string
     auth: boolean
@@ -25,13 +36,8 @@ interface RemoteSource {
     enabled: boolean
 }
 
-const dummyRemoteSources: RemoteSource[] = [
-    { name: 'HuggingFace API', endpoint: 'https://api.huggingface.co/llm/infer', auth: true, status: 'active', enabled: true },
-    { name: 'ArliAI Log API', endpoint: 'http://127.0.0.1:5001/logs', auth: false, status: 'inactive', enabled: false }
-]
-
 export default function RemoteSourcesPanel() {
-    const [sources, setSources] = useState<RemoteSource[]>(dummyRemoteSources)
+    const [sources, setSources] = useState<RemoteSource[]>([])
     const [showAddModal, setShowAddModal] = useState(false)
     const [form, setForm] = useState<RemoteSource>({
         name: '',
@@ -41,13 +47,92 @@ export default function RemoteSourcesPanel() {
         enabled: true
     })
 
+    const notify = useNotificationStore((s) => s.show)
+
+    useEffect(() => {
+        loadSources()
+    }, [])
+
+    const loadSources = async () => {
+        const data = await getRemoteSources()
+        setSources(data)
+    }
+
     const handleFormChange = (key: keyof RemoteSource, value: any) =>
         setForm(prev => ({ ...prev, [key]: value }))
 
-    const addSource = () => {
-        setSources(prev => [...prev, form])
+    const toggleEnable = async (id: number | undefined) => {
+        if (id === undefined) {
+            notify('소스 ID가 잘못되었습니다.', 'error')
+            return
+        }
+
+        const source = sources.find(src => src.id === id)
+        if (!source) {
+            notify('소스를 찾을 수 없습니다.', 'error')
+            return
+        }
+
+        const updatedSource = {
+            ...source,
+            enabled: !source.enabled,
+            status: (!source.enabled ? 'active' : 'inactive') as 'active' | 'inactive'
+        }
+
+        setSources(prev =>
+            prev.map((s) =>
+                s.id === id
+                    ? updatedSource
+                    : s
+            )
+        )
+
+        await updateRemoteSource(id, updatedSource)
+
+        notify('소스 상태가 변경되었습니다.', 'info')
+    }
+
+
+    const addSource = async () => {
+        await addRemoteSource(form)
+        loadSources()
         setShowAddModal(false)
-        setForm({ name: '', endpoint: '', auth: false, status: 'active', enabled: true })
+        setForm({
+            name: '',
+            endpoint: '',
+            auth: false,
+            status: 'active',
+            enabled: true
+        })
+
+        notify('소스가 추가되었습니다.', 'info')
+    }
+    
+    const handleUpdateSource = async (id: number | undefined) => {
+        if (id === undefined) {
+            notify('소스 ID가 잘못되었습니다.', 'error')
+            return
+        }
+
+        const updatedSource = sources.find(s => s.id === id)
+        if (!updatedSource) return
+
+        await updateRemoteSource(id, updatedSource)
+        loadSources()
+
+        notify('소스 상태를 업데이트했습니다.', 'info')
+    }
+
+    const handleDeleteSource = async (id: number | undefined) => {
+        if (id === undefined) {
+            notify('소스 ID가 잘못되었습니다.', 'error')
+            return
+        }
+
+        await deleteRemoteSource(id)
+        loadSources()
+
+        notify('소스가 삭제되었습니다.', 'info')
     }
 
     return (
@@ -78,16 +163,25 @@ export default function RemoteSourcesPanel() {
                             {src.auth && <Lock className="w-4 h-4 text-yellow-400 ml-1" />}
                         </div>
                         <div className="flex items-center gap-2">
-                            <button className="text-white/40 hover:text-white/70">
+                            <button
+                                className="text-white/40 hover:text-white/70"
+                                onClick={() => handleUpdateSource(src.id)}
+                            >
                                 <RefreshCw className="w-4 h-4" />
                             </button>
-                            <button className="text-white/40 hover:text-white/70">
+                            <button
+                                className="text-white/40 hover:text-white/70"
+                                onClick={() => toggleEnable(src.id)}
+                            >
                                 {src.enabled
                                     ? <ToggleRight className="w-5 h-5 text-indigo-400" />
                                     : <ToggleLeft className="w-5 h-5 text-white/40" />
                                 }
                             </button>
-                            <button className="text-white/30 hover:text-red-400">
+                            <button
+                                onClick={() => handleDeleteSource(src.id)}
+                                className="text-white/30 hover:text-red-400"
+                            >
                                 <Trash2 className="w-4 h-4" />
                             </button>
                         </div>
@@ -131,7 +225,7 @@ export default function RemoteSourcesPanel() {
                                 onClick={() => setShowAddModal(false)}
                                 className="text-white/50 hover:text-white"
                             >
-                                ✕
+                                <X className="w-5 h-5" />
                             </button>
                         </div>
 

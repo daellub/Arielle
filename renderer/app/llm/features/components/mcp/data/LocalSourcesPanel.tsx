@@ -1,11 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
     Trash2,
     RefreshCw,
     HardDrive,
+    Folder,
+    Plus,
+    X,
     Database,
     Link2,
     CheckCircle,
@@ -16,21 +19,35 @@ import {
 } from 'lucide-react'
 import clsx from 'clsx'
 
+import {
+    getLocalSources,
+    addLocalSource,
+    updateLocalSource,
+    deleteLocalSource
+} from '@/app/llm/hooks/useMCPSource'
+import { useNotificationStore } from '@/app/store/useNotificationStore'
+
+declare global {
+    interface Window {
+        electron: any;
+    }
+}
+
 interface LocalSource {
+    id?: number
     name: string
     path: string
     type: 'folder' | 'database'
     status: 'active' | 'inactive'
     enabled: boolean
+    host?: string
+    port?: string
+    username?: string
+    password?: string
 }
 
-const dummySources: LocalSource[] = [
-    { name: '문서 폴더', path: '/Users/dael/Documents', type: 'folder', status: 'active', enabled: true },
-    { name: 'ASR 결과 DB', path: 'mysql://localhost:3306/asr_db', type: 'database', status: 'inactive', enabled: false }
-]
-
 export default function LocalSourcesPanel() {
-    const [sources, setSources] = useState<LocalSource[]>(dummySources)
+    const [sources, setSources] = useState<LocalSource[]>([])
     const [showAddModal, setShowAddModal] = useState(false)
     const [form, setForm] = useState<LocalSource>({
         name: '',
@@ -40,26 +57,112 @@ export default function LocalSourcesPanel() {
         enabled: true
     })
 
-    const handleFormChange = (key: keyof LocalSource, value: any) =>
-        setForm(prev => ({ ...prev, [key]: value }))
+    const notify = useNotificationStore((s) => s.show)
 
-    const addSource = () => {
-        setSources(prev => [...prev, form])
+    useEffect(() => {
+        loadSources()
+    }, [])
+
+    const loadSources = async () => {
+        const data = await getLocalSources()
+        setSources(data)
+    }
+
+    const handleFormChange = (key: keyof LocalSource, value: any) =>
+        setForm(prev => ({ ...prev, [key]: value || '' }))
+
+    const addSource = async () => {
+        await addLocalSource(form)
+        loadSources()
         setShowAddModal(false)
-        setForm({ name: '', path: '', type: 'folder', status: 'active', enabled: true })
+        setForm({
+            name: '',
+            path: '',
+            type: 'folder',
+            status: 'active',
+            enabled: true
+        })
+
+        notify('로컬 소스를 등록했습니다', 'success')
+    }
+
+    const handleDeleteSource = async (id: number | undefined) => {
+        if (id === undefined) {
+            notify('소스 ID가 잘못되었습니다.', 'error')
+            return
+        }
+
+        await deleteLocalSource(id)
+        loadSources()
+        notify('소스를 삭제했습니다.', 'error')
+    }
+
+    const toggleEnable = async (id: number | undefined) => {
+        if (id === undefined) {
+            notify('소스 ID가 잘못되었습니다.', 'error')
+            return
+        }
+
+        const source = sources.find(src => src.id === id)
+        if (!source) {
+            notify('소스를 찾을 수 없습니다.', 'error')
+            return
+        }
+
+        const updatedSource = {
+            ...source,
+            enabled: !source.enabled,
+            status: (!source.enabled ? 'active' : 'inactive') as 'active' | 'inactive'
+        }
+
+        setSources(prev =>
+            prev.map((s) =>
+                s.id === id
+                    ? updatedSource
+                    : s
+            )
+        )
+
+        await updateLocalSource(id, updatedSource)
+        
+        notify('소스 상태가 변경되었습니다.', 'info')
+    }
+
+    const handleUpdateSource = async (id: number | undefined) => {
+        if (id === undefined) {
+            notify('소스 ID가 잘못되었습니다.', 'error')
+            return
+        }
+
+        const updatedSource = sources.find(s => s.id === id)
+        if (!updatedSource) return
+
+        await updateLocalSource(id, updatedSource)
+        loadSources()
+
+        notify('소스 상태를 업데이트했습니다.', 'info')
+    }
+
+    const selectPath = async () => {
+        const result = await window.electronAPI.openModelDialog()
+        if (result) {
+            setForm(prev => ({ ...prev, path: result }))
+        }
     }
 
     return (
         <div className="space-y-2">
             <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-white/80 flex items-center gap-1">
-                    📁 Local 소스
+                    <Folder className="w-4 h-4 text-white/40" />
+                    Local 소스
                 </h3>
                 <button
                     onClick={() => setShowAddModal(true)}
                     className="text-xs text-indigo-300 hover:text-indigo-400 transition flex items-center gap-1"
                 >
-                    + 소스 추가
+                    <Plus className="w-4 h-4" />
+                    소스 추가
                 </button>
             </div>
 
@@ -77,16 +180,25 @@ export default function LocalSourcesPanel() {
                             <span className="text-white font-medium">{src.name}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <button className="text-white/40 hover:text-white/70">
+                            <button
+                                className="text-white/40 hover:text-white/70"
+                                onClick={() => handleUpdateSource(src.id)}
+                            >
                                 <RefreshCw className="w-4 h-4" />
                             </button>
-                            <button className="text-white/40 hover:text-white/70">
+                            <button
+                                className="text-white/40 hover:text-white/70"
+                                onClick={() => toggleEnable(src.id)}
+                            >
                                 {src.enabled
                                     ? <ToggleRight className="w-5 h-5 text-indigo-400" />
                                     : <ToggleLeft className="w-5 h-5 text-white/40" />
                                 }
                             </button>
-                            <button className="text-white/30 hover:text-red-400">
+                            <button
+                                onClick={() => handleDeleteSource(src.id)}
+                                className="text-white/30 hover:text-red-400"
+                            >
                                 <Trash2 className="w-4 h-4" />
                             </button>
                         </div>
@@ -98,15 +210,15 @@ export default function LocalSourcesPanel() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {src.status === 'active'
+                        {src.enabled
                             ? <CheckCircle className="w-4 h-4 text-green-400" />
                             : <XCircle className="w-4 h-4 text-red-400" />
                         }
                         <span className={clsx('text-[10px] font-medium', {
-                            'text-green-400': src.status === 'active',
-                            'text-red-400': src.status === 'inactive'
+                            'text-green-400': src.enabled,
+                            'text-red-400': !src.enabled
                         })}>
-                            {src.status === 'active' ? 'Active' : 'Inactive'}
+                            {src.enabled ? 'Active' : 'Inactive'}
                         </span>
                     </div>
                 </div>
@@ -129,59 +241,104 @@ export default function LocalSourcesPanel() {
                             <button
                                 onClick={() => setShowAddModal(false)}
                                 className="text-white/50 hover:text-white"
-                            >✕</button>
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
                         </div>
 
-                        <input
-                            className="w-full p-2 rounded bg-white/10 text-white text-sm"
-                            placeholder="이름"
-                            value={form.name}
-                            onChange={e => handleFormChange('name', e.target.value)}
-                        />
-                        <input
-                            className="w-full p-2 rounded bg-white/10 text-white text-sm"
-                            placeholder="경로"
-                            value={form.path}
-                            onChange={e => handleFormChange('path', e.target.value)}
-                        />
-                        <select
-                            className="w-full p-2 rounded bg-white/10 text-white text-sm"
-                            value={form.type}
-                            onChange={e => handleFormChange('type', e.target.value as 'folder' | 'database')}
-                        >
-                            <option value="folder">Folder</option>
-                            <option value="database">Database</option>
-                        </select>
-                        <select
-                            className="w-full p-2 rounded bg-white/10 text-white text-sm"
-                            value={form.status}
-                            onChange={e => handleFormChange('status', e.target.value as 'active' | 'inactive')}
-                        >
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-
-                        <label className="flex items-center gap-2">
+                        <div className="space-y-2">
                             <input
-                                type="checkbox"
-                                checked={form.enabled}
-                                onChange={e => handleFormChange('enabled', e.target.checked)}
-                                className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                className="w-full p-2 rounded bg-white/10 text-white text-sm"
+                                placeholder="이름"
+                                value={form.name}
+                                onChange={e => handleFormChange('name', e.target.value)}
                             />
-                            <span className="text-white text-sm">Enabled</span>
-                        </label>
 
-                        <div className="flex justify-end gap-2 pt-2">
-                            <button
-                                onClick={() => setShowAddModal(false)}
-                                className="text-xs text-white/50"
-                            >취소</button>
-                            <button
-                                onClick={addSource}
-                                className="text-xs text-indigo-300 flex items-center gap-1"
+                            {form.type === 'database' ? (
+                                <div className="space-y-2">
+                                    <input
+                                        className="w-full p-2 rounded bg-white/10 text-white text-sm"
+                                        placeholder="Database Host (예: localhost)"
+                                        value={form.host}
+                                        onChange={e => handleFormChange('host', e.target.value)}
+                                    />
+                                    <input
+                                        className="w-full p-2 rounded bg-white/10 text-white text-sm"
+                                        placeholder="Database Port (예: 3306)"
+                                        value={form.port}
+                                        onChange={e => handleFormChange('port', e.target.value)}
+                                    />
+                                    <input
+                                        className="w-full p-2 rounded bg-white/10 text-white text-sm"
+                                        placeholder="Username"
+                                        value={form.username}
+                                        onChange={e => handleFormChange('username', e.target.value)}
+                                    />
+                                    <input
+                                        className="w-full p-2 rounded bg-white/10 text-white text-sm"
+                                        placeholder="Password"
+                                        type="password"
+                                        value={form.password}
+                                        onChange={e => handleFormChange('password', e.target.value)}
+                                    />
+                                </div>
+                            ) : (
+                                <div className="gap-2">
+                                    <input
+                                        className="w-full p-2 rounded bg-white/10 text-white text-sm"
+                                        placeholder="경로"
+                                        value={form.path}
+                                        onChange={e => handleFormChange('path', e.target.value)}
+                                    />
+                                    <button
+                                        onClick={selectPath}
+                                        className="text-indigo-300 text-xs hover:text-indigo-400 transition"
+                                    >
+                                        폴더 선택
+                                    </button>
+                                </div>
+                            )}
+
+                            <select
+                                className="w-full p-2 rounded bg-white/10 text-white text-sm"
+                                value={form.type}
+                                onChange={e => handleFormChange('type', e.target.value as 'folder' | 'database')}
                             >
-                                <Save className="w-4 h-4" /> 등록
-                            </button>
+                                <option className='text-black' value="folder">Folder</option>
+                                <option className='text-black' value="database">Database</option>
+                            </select>
+
+                            <select
+                                className="w-full p-2 rounded bg-white/10 text-white text-sm"
+                                value={form.status}
+                                onChange={e => handleFormChange('status', e.target.value as 'active' | 'inactive')}
+                            >
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+
+                            <label className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    checked={form.enabled}
+                                    onChange={e => handleFormChange('enabled', e.target.checked)}
+                                    className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                />
+                                <span className="text-white text-sm">Enabled</span>
+                            </label>
+
+                            <div className="flex justify-end gap-4 pt-2">
+                                <button
+                                    onClick={() => setShowAddModal(false)}
+                                    className="text-xs text-white/50"
+                                >취소</button>
+                                <button
+                                    onClick={addSource}
+                                    className="text-xs text-indigo-300 flex items-center gap-1"
+                                >
+                                    <Save className="w-4 h-4" /> 등록
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>,

@@ -11,6 +11,7 @@ from pathlib import Path
 import re
 
 from backend.db.database import save_llm_interaction, save_llm_feedback
+from backend.llm.emotion.service import analyze_emotion
 
 router = APIRouter()
 
@@ -119,18 +120,32 @@ async def websocket_chat(ws: WebSocket):
                     })
                     ja_translation = ja_res.json().get("translated", "")
 
+                emo_data = await analyze_emotion(stream_text)
+                emotion = emo_data.get("emotion", "neutral")
+                tone = emo_data.get("tone", "neutral")
+
                 interaction_id = save_llm_interaction(
                     model_name="arielle-q6",
                     request=msgs[-1]["content"],
                     response=stream_text.strip(),
                     translate_response=ko_translation,
-                    ja_translate_response=ja_translation
+                    ja_translate_response=ja_translation,
+                    emotion=emotion,
+                    tone=tone
                 )
 
+                print("[✅ WebSocket 번역 결과]", {
+                    "id": interaction_id,
+                    "ko": ko_translation,
+                    "ja": ja_translation
+                })
                 await ws.send_json({
                     "type": "interaction_id",
                     "id": interaction_id,
-                    "translated": ko_translation
+                    "translated": ko_translation,
+                    "ja_translated": ja_translation,
+                    "emotion": emotion,
+                    "tone": tone
                 })
 
             except Exception as e:

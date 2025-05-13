@@ -11,33 +11,26 @@ import {
     Server,
 } from 'lucide-react'
 
-interface Props {
-    modelName: string
-    maxTokens: number
-    temperature: number
-    topK: number
-    topP: number
-    repetitionPenalty: number
-    responseTime: number
-    device: string
-}
+import { useLLMSettingsStore } from '@/app/llm/features/store/llmSettingsStore'
 
-export default function LLMStatusCard({
-    modelName,
-    maxTokens,
-    temperature,
-    topK,
-    topP,
-    repetitionPenalty,
-    responseTime,
-    device,
-}: Props) {
+export default function LLMStatusCard() {
+    const {
+        modelName,
+        maxTokens,
+        temperature,
+        topK,
+        topP,
+        repetitionPenalty,
+        responseTime,
+        device,
+    } = useLLMSettingsStore()
+
     return (
         <div className="w-[260px] p-4 rounded-2xl bg-[#1f1f2d]/60 backdrop-blur-md border border-white/10 shadow-sm text-white space-y-4">
             <div>
-            <div className="flex items-center gap-2 text-xs uppercase text-white/60 tracking-wider">
+            <div className="flex items-center gap-2 text-xs uppercase text-white/60">
                 <Atom className="w-4 h-4 text-indigo-300" />
-                마법 연산 구조체
+                모델 연산체
             </div>
                 <div className="text-lg font-bold text-indigo-300 mt-1">{modelName}</div>
             </div>
@@ -52,7 +45,7 @@ export default function LLMStatusCard({
             </div>
 
             <div>
-                <div className="flex items-center gap-2 text-xs uppercase text-white/60 tracking-wider mb-1">
+                <div className="flex items-center gap-2 text-xs uppercase text-white/60 mb-1">
                     <Server className="w-4 h-4 text-indigo-300" />
                     디바이스
                 </div>

@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { Settings } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 
+import LLMModelsPanel from './mcp/LLMModelsPanel'
 import IntegrationsPanel from './mcp/IntegrationsPanel'
 import DataSourcesPanel from './mcp/DataSourcesPanel'
 import PromptsPanel from './mcp/PromptsPanels'
@@ -15,12 +16,12 @@ import SecurityPanel from './mcp/SecurityPanel'
 import LogsPanel from './mcp/LogPanel'
 
 const tabs = [
-    'Integrations', 'Data Sources', 'Prompts', 'Tools',
+    'LLM Models', 'Integrations', 'Data Sources', 'Prompts', 'Tools',
     'Memory/Context', 'Sampling', 'Security', 'Logs'
 ]
 
 export default function MCPPanel() {
-    const [selected, setSelected] = useState('Integrations')
+    const [selected, setSelected] = useState('LLM Models')
 
     return (
         <div className="w-[350px] h-[575px] p-4 rounded-2xl bg-[#1f1f2d]/60 backdrop-blur-md border border-white/10 shadow-sm text-white space-y-4">
@@ -55,6 +56,7 @@ export default function MCPPanel() {
                         transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
                         className="absolute inset-0"
                     >
+                        {selected === 'LLM Models' && <LLMModelsPanel />}
                         {selected === 'Integrations' && <IntegrationsPanel />}
                         {selected === 'Data Sources' && <DataSourcesPanel />}
                         {selected === 'Prompts' && <PromptsPanel />}

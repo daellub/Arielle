@@ -46,7 +46,7 @@ export default function CompareModal({
         {
             icon: Sparkles,
             label: 'LLM 의역',
-            text: llm || '의역 결과는 준비 중입니다.',
+            text: '의역 기능은 준비 중입니다.',
             color: 'text-pink-500',
         },
     ]

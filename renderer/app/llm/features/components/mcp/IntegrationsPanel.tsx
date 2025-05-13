@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import axios from 'axios'
 import {
     Microchip,
     Server as ServerIcon,
@@ -15,69 +16,41 @@ import {
 import clsx from 'clsx'
 
 import Tooltip from '../LLMTooltip'
+import { useNotificationStore } from '@/app/store/useNotificationStore'
+import {
+    listServers,
+    createServer,
+    updateServer,
+    deleteServer,
+    getServerStatus
+} from '@/app/lib/api/mcp'
 
 interface ServerEntry {
     name: string
     alias: string
     description?: string
-    type: string
+    type: 'MCP-Server' | 'MCP-RP' | 'MCP-Bridge'
     endpoint: string
     authType: 'none' | 'apiKey' | 'bearer' | 'basic'
     tags?: string[]
-    status: 'connected' | 'disconnected'
+    status: 'active' | 'inactive'
     latency?: number
     timeoutMs: number
     healthCheck?: string
     lastChecked?: string
     error?: string
     enabled: boolean
-}
-
-const dummyServers: ServerEntry[] = [
-    {
-        name: 'ArliAI Core',
-        alias: 'arielle-mcp',
-        description: '컨텍스트+LLM 호출 서버',
-        type: 'MCP-RP',
-        endpoint: 'http://localhost:8000',
-        authType: 'bearer',
-        tags: ['LLM', 'Memory'],
-        status: 'connected',
-        latency: 86,
-        timeoutMs: 30000,
-        healthCheck: '/health',
-        lastChecked: '2분 전',
-        enabled: true
-    },
-    {
-        name: 'LLM Proxy',
-        alias: 'llm-proxy',
-        description: '외부 LLM 브릿지',
-        type: 'MCP-Bridge',
-        endpoint: 'http://127.0.0.1:5000',
-        authType: 'none',
-        tags: ['Bridge'],
-        status: 'disconnected',
-        timeoutMs: 30000,
-        lastChecked: '5분 전',
-        error: '401 Unauthorized',
-        enabled: false
-    }
-]
-
-function getTypeIcon(type: string) {
-    switch (type) {
-        case 'MCP-RP':     return <Microchip   className="w-3.5 h-3.5 text-white/40" />
-        case 'MCP-Bridge': return <Link2       className="w-3.5 h-3.5 text-white/40" />
-        case 'MCP-Server': return <ServerIcon  className="w-3.5 h-3.5 text-white/40" />
-        default:           return null
-    }
+    apiKey?: string
+    token?: string
+    username?: string
+    password?: string
 }
 
 export default function IntegrationsPanel() {
-    const [servers,      setServers]      = useState<ServerEntry[]>(dummyServers)
+    const [servers, setServers] = useState<ServerEntry[]>([])
+    const [loading, setLoading] = useState(false)
     const [showAddModal, setShowAddModal] = useState(false)
-    const [newServer,    setNewServer]    = useState<Partial<ServerEntry>>({
+    const [newServer, setNewServer] = useState<Partial<ServerEntry>>({
         name: '',
         alias: '',
         description: '',
@@ -90,29 +63,118 @@ export default function IntegrationsPanel() {
         enabled: true
     })
 
-    const handleFieldChange = (key: string, value: any) =>
-        setNewServer(prev => ({ ...prev, [key]: value }))
+    const notify = useNotificationStore((s) => s.show)
 
-    const registerServer = () => {
-        const entry = {
-            name:        newServer.name || '',
-            alias:       newServer.alias || '',
-            description: newServer.description,
-            type:        newServer.type || 'MCP-Server',
-            endpoint:    newServer.endpoint || '',
-            authType:    newServer.authType || 'none',
-            tags:        newServer.tags || [],
-            status:      'disconnected' as const,
-            latency:     undefined,
-            timeoutMs:   newServer.timeoutMs || 30000,
-            healthCheck: newServer.healthCheck,
-            lastChecked: undefined,
-            error:       undefined,
-            enabled:     newServer.enabled ?? true
+    const handleFieldChange = (key: keyof ServerEntry, value: any) =>
+        setNewServer((prev) => ({ ...prev, [key]: value }))
+
+    useEffect(() => {
+        loadServers()
+    }, [])
+
+    async function loadServers() {
+        setLoading(true)
+        try {
+            const res = await listServers()
+            setServers(res.data as ServerEntry[])
+        } catch (error) {
+            console.error('Error loading servers:', error)
+        } finally {
+            setLoading(false)
         }
-        setServers([...servers, entry])
-        setShowAddModal(false)
-        setNewServer({ name: '', alias: '', type: 'MCP-Server', endpoint: '', authType: 'none', tags: [], timeoutMs: 30000, enabled: true })
+    }
+
+    async function registerServer() {
+        if (!newServer.name || !newServer.endpoint || !newServer.alias) {
+            notify('서버 이름, 엔드포인트, Alias는 필수입니다.', 'info')
+            return
+        }
+
+        try {
+            await createServer({
+                name:        newServer.name!,
+                alias:       newServer.alias!,
+                description: newServer.description || '',
+                type:        newServer.type!,
+                endpoint:    newServer.endpoint!,
+                authType:    newServer.authType!,
+                tags:        newServer.tags || [],
+                timeoutMs:   newServer.timeoutMs || 30000,
+                healthCheck: newServer.healthCheck || '',
+                enabled:     newServer.enabled,
+                apiKey:      newServer.apiKey || '',
+                token:       newServer.token || '',
+                username:    newServer.username || '',
+                password:    newServer.password || ''
+            })
+            notify('서버 등록 완료', 'success')
+            loadServers()
+            setShowAddModal(false)
+            setNewServer({
+                name: '', alias: '', description: '', endpoint: '',
+                type: 'MCP-Server', authType: 'none', tags: [],
+                timeoutMs: 30000, healthCheck: '', enabled: true
+            })
+        } catch (err) {
+            console.error('서버 등록 실패:', err)
+            notify('서버 등록 실패', 'error')
+        }
+    }
+
+    async function deleteServerFromAPI(alias: string) {
+        try {
+            await deleteServer(alias)
+            notify('서버 삭제 완료', 'success')
+            await loadServers()
+            setShowAddModal(false)
+        } catch (err) {
+            console.error('서버 삭제 실패:', err)
+            notify('서버 삭제 실패', 'error')
+        }
+    }
+
+    async function refreshStatus(alias: string) {
+        try {
+            const res = await getServerStatus(alias)
+            setServers((list) =>
+                list.map((s) => s.alias === alias ? { ...s, ...res.data } : s)
+            )
+        } catch (err) {
+            console.error('상태 갱신 실패:', err)
+            notify('상태 갱신 실패', 'error')
+        }
+    }
+
+    async function toggleEnable(alias: string, enabled: boolean) {
+        try {
+            const server = servers.find(s => s.alias === alias)
+
+            if (server) {
+                const updatedServer = {
+                    ...server,
+                    enabled,
+                    status: enabled ? 'active' as const : 'inactive' as const,
+                }
+
+                await updateServer(alias, updatedServer)
+
+                setServers((list) =>
+                    list.map((s) => s.alias === alias ? { ...s, ...updatedServer } : s)
+                )
+            }
+        } catch (err) {
+            console.error('토글 실패:', err)
+            notify('서버 활성화 토글 실패', 'error')
+        }
+    }
+
+    function getTypeIcon(type: string) {
+        switch (type) {
+            case 'MCP-RP':     return <Microchip   className="w-3.5 h-3.5 text-white/40" />
+            case 'MCP-Bridge': return <Link2       className="w-3.5 h-3.5 text-white/40" />
+            case 'MCP-Server': return <ServerIcon  className="w-3.5 h-3.5 text-white/40" />
+            default:           return null
+        }
     }
 
     return (
@@ -128,82 +190,80 @@ export default function IntegrationsPanel() {
                 </button>
             </div>
 
-            <div className="space-y-2">
-                {servers.map((srv, i) => (
-                    <div key={i} className="bg-white/5 p-2 rounded-lg">
-                        <div className="flex justify-between items-start mb-1">
-                            <div className="flex items-start gap-2">
-                                {getTypeIcon(srv.type)}
-                                <div className="flex flex-col">
-                                    <div className="flex items-baseline gap-1">
-                                        <span className="text-white text-[12px] font-medium">{srv.name}</span>
-                                        <span className="text-white/50 text-[8px]">({srv.alias})</span>
+            {loading
+                ? <div className="text-sm text-white/60">로딩 중…</div>
+                : <div className="space-y-2">
+                    {servers.map((srv, i) => (
+                        <div key={i} className="bg-white/5 p-2 rounded-lg">
+                            <div className="flex justify-between items-start mb-1">
+                                <div className="flex items-start gap-2">
+                                    {getTypeIcon(srv.type)}
+                                    <div className="flex flex-col">
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-white text-[12px] font-medium">{srv.name}</span>
+                                            <span className="text-white/50 text-[8px]">({srv.alias})</span>
+                                        </div>
+                                        {srv.description && <span className="text-white/50 text-[9px]">{srv.description}</span>}
+                                        <span className="text-white/40 text-[8px] truncate">{srv.endpoint}</span>
                                     </div>
-                                    {srv.description && (
-                                        <span className="text-white/50 text-[9px]">{srv.description}</span>
-                                    )}
-                                    <span className="text-white/40 text-[8px] truncate">{srv.endpoint}</span>
+                                </div>
+                                <button
+                                    className="text-white/40 hover:text-red-400"
+                                    onClick={() => deleteServerFromAPI(srv.alias)}
+                                >
+                                    <Trash2 className="w-3 h-3" />
+                                </button>
+                            </div>
+
+                            {/* 상태바 & latency */}
+                            <div className="flex items-center gap-2 mb-2 ml-1">
+                                {srv.status === 'active'
+                                    ? <Wifi className="w-3 h-3 text-green-400" />
+                                    : <WifiOff className="w-3 h-3 text-red-400" />
+                                }
+                                <p className={clsx('text-[10px] font-medium', {
+                                    'text-green-400': srv.status === 'active',
+                                    'text-red-400':   srv.status === 'inactive'
+                                })}>
+                                    {srv.status === 'active' ? 'Online' : 'Offline'}
+                                </p>
+                                <p className="text-[10px]">↔ {srv.latency ?? '—'}ms</p>
+                                <p className="text-[10px]">⏱ {srv.timeoutMs}ms</p>
+                            </div>
+
+                            {/* 툴팁, 에러, 리프레시, 토글 */}
+                            <div className="flex flex-wrap items-center gap-2 text-[9px] text-white/60">
+                                {srv.healthCheck && (
+                                    <Tooltip content={`Health Check: ${srv.healthCheck}`}>
+                                        <span className="underline decoration-dotted cursor-help">{srv.healthCheck}</span>
+                                    </Tooltip>
+                                )}
+                                {srv.lastChecked && <span>Last: {srv.lastChecked}</span>}
+                                {srv.error && (
+                                    <Tooltip content={srv.error}>
+                                        <span className="text-red-400 underline decoration-dotted cursor-help">Error</span>
+                                    </Tooltip>
+                                )}
+                                <button
+                                    className="text-white/40 hover:text-white/70"
+                                    onClick={() => refreshStatus(srv.alias)}
+                                >
+                                    <RefreshCw className="w-3 h-3" />
+                                </button>
+                                <div
+                                    className="w-6 h-3.5 bg-white/20 rounded-full relative cursor-pointer"
+                                    onClick={() => toggleEnable(srv.alias, !srv.enabled)}
+                                >
+                                    <div className={clsx(
+                                        'w-2.5 h-2.5 rounded-full absolute top-0.5 transition-all',
+                                        srv.enabled ? 'left-2 bg-indigo-400' : 'left-0.5 bg-white/40'
+                                    )} />
                                 </div>
                             </div>
-                            <button className="text-white/40 hover:text-red-400">
-                                <Trash2 className="w-3 h-3" />
-                            </button>
                         </div>
-
-                        <div className="flex items-center gap-2 mb-2 ml-1">
-                            {srv.status === 'connected'
-                                ? <Wifi    className="w-3 h-3 text-green-400" />
-                                : <WifiOff className="w-3 h-3 text-red-400" />
-                            }
-                            <p className={clsx('text-[10px] font-medium', {
-                                'text-green-400': srv.status === 'connected',
-                                'text-red-400':   srv.status === 'disconnected'
-                            })}>
-                                {srv.status === 'connected' ? 'Online' : 'Offline'}
-                            </p>
-                            <p className="text-[10px]">↔ {srv.latency != null ? `${srv.latency}ms` : '—'}</p>
-                            <p className="text-[10px]">⏱ {srv.timeoutMs}ms</p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 text-[9px] text-white/60">
-                            {srv.healthCheck && (
-                                <Tooltip content={`Health Check Path: ${srv.healthCheck}`}>
-                                    <span className="underline decoration-dotted cursor-help text-[9px]">
-                                        {srv.healthCheck}
-                                    </span>
-                                </Tooltip>
-                            )}
-                            <span title={`Auth Type: ${srv.authType}`}>{srv.authType}</span>
-                            <Tooltip content={`Auth Type: ${srv.authType}`}>
-                                <span className="underline decoration-dotted cursor-help text-[9px]">
-                                    {srv.authType}
-                                </span>
-                            </Tooltip>
-                            {srv.lastChecked && (
-                                <span>Last: {srv.lastChecked}</span>
-                            )}
-                            {srv.error && (
-                                <Tooltip content={srv.error}>
-                                    <span className="text-red-400 underline decoration-dotted cursor-help text-[9px]">
-                                        Error: {srv.error}
-                                    </span>
-                                </Tooltip>
-
-                            )}
-                            <button className="text-white/40 hover:text-white/70">
-                                <RefreshCw className="w-3 h-3" />
-                            </button>
-                            <div className="w-6 h-3.5 bg-white/20 rounded-full relative cursor-pointer">
-                                <div className={clsx(
-                                    'w-2.5 h-2.5 rounded-full absolute top-0.5 transition-all',
-                                    srv.enabled
-                                        ? 'left-2 bg-indigo-400'
-                                        : 'left-0.5 bg-white/40'
-                                )} />
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
+            }
 
             {showAddModal && createPortal(
                 <div
@@ -236,6 +296,15 @@ export default function IntegrationsPanel() {
                             value={newServer.description}
                             onChange={e => handleFieldChange('description', e.target.value)}
                         />
+                        <select
+                            className="w-full p-2 rounded bg-white/10 text-white text-sm"
+                            value={newServer.type}
+                            onChange={e => handleFieldChange('type', e.target.value)}
+                        >
+                            <option className="text-black" value="MCP-Server">MCP Server</option>
+                            <option className="text-black" value="MCP-RP">MCP RP</option>
+                            <option className="text-black" value="MCP-Bridge">MCP Bridge</option>
+                        </select>
                         <input
                             className="w-full p-2 rounded bg-white/10 text-white text-sm"
                             placeholder="엔드포인트 URL"
@@ -254,13 +323,13 @@ export default function IntegrationsPanel() {
                             value={newServer.authType}
                             onChange={e => handleFieldChange('authType', e.target.value)}
                         >
-                            <option value="none">Auth 없음</option>
-                            <option value="apiKey">API Key</option>
-                            <option value="bearer">Bearer Token</option>
-                            <option value="basic">Basic Auth</option>
+                            <option className="text-black" value="none">Auth 없음</option>
+                            <option className="text-black" value="apiKey">API Key</option>
+                            <option className="text-black" value="bearer">Bearer Token</option>
+                            <option className="text-black" value="basic">Basic Auth</option>
                         </select>
 
-                        {/* {newServer.authType === 'apiKey' && (
+                        {newServer.authType === 'apiKey' && (
                             <input
                                 className="w-full p-2 rounded bg-white/10 text-white text-sm"
                                 placeholder="API Key"
@@ -292,7 +361,7 @@ export default function IntegrationsPanel() {
                                     onChange={e => handleFieldChange('password', e.target.value)}
                                 />
                             </div>
-                        )} */}
+                        )}
 
                         <div className="flex items-center gap-2">
                             <input

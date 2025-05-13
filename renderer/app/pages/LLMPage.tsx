@@ -1,3 +1,4 @@
+// app/pages/LLMPage.tsx
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -9,6 +10,7 @@ import CharacterStatusCard from '@/app/llm/features/components/CharacterStatusCa
 import LLMSystemStats from '@/app/llm/features/components/LLMStatusCard'
 import SectionTimerCard from '@/app/llm/features/components/SectionTimerCard'
 import MCPPanel from '@/app/llm/features/components/MCPPanel'
+import { useLLMStore } from '@/app/llm/features/store/useLLMStore'
 import LLMDebugInputPanel from '../llm/features/components/LLMDebugInputPanel'
 
 interface Sparkle {
@@ -22,6 +24,25 @@ export default function LLMPage() {
     const [sparkles, setSparkles] = useState<Sparkle[]>([])
     const tabs: ('원어' | '번역')[] = ['원어', '번역']
     const [langTab, setLangTab] = useState<'원어' | '번역'>('원어')
+
+    
+    const [lastEmotion, setLastEmotion] = useState('neutral')
+    const [lastTone, setLastTone] = useState('정중체')
+
+    useEffect(() => {
+        const unsub = useLLMStore.subscribe(
+            (state) => state.messages,
+            (messages) => {
+                const last = [...messages].reverse().find((m) => m.role === 'assistant' && m.isFinal)
+                if (last) {
+                    setLastEmotion(last.emotion ?? 'neutral')
+                    setLastTone(last.tone ?? '정중체')
+                }
+            }
+        )
+        return unsub
+    }, [])
+
 
     useEffect(() => {
         const generated = Array.from({ length: 20 }, () => ({
@@ -63,17 +84,11 @@ export default function LLMPage() {
                     <div className="grid grid-cols-12 gap-8">
                         <div className="col-span-3 flex flex-col justify-between space-y-6 h-[80vh]">
                             <div className="grid grid-cols-1 gap-4">
-                                <CharacterStatusCard />
-                                <LLMSystemStats
-                                    modelName="pantheon-rp-1.8-Q6_K"
-                                    maxTokens={512}
-                                    temperature={0.7}
-                                    topP={0.9}
-                                    topK={40}
-                                    repetitionPenalty={1.1}
-                                    responseTime={1.2}
-                                    device="Intel AI Boost NPU"
+                                <CharacterStatusCard
+                                    emotion={lastEmotion}
+                                    tone={lastTone}
                                 />
+                                <LLMSystemStats />
                                 <SectionTimerCard />
                             </div>
                         </div>
@@ -82,7 +97,8 @@ export default function LLMPage() {
                             bg-white/5 opacity-60 hover:opacity-75 backdrop-blur-xl
                             border border-white/10 rounded-[28px]
                             shadow-[0_8px_32px_rgba(255,255,255,0.05)]
-                            p-8 flex flex-col justify-end transition-all">
+                            p-8 flex flex-col justify-end transition-all"
+                        >
                             <div className="absolute -top-5 right-5 z-10">
                                 <div className="relative flex bg-white/10 rounded-full p-1 shadow-inner backdrop-blur-md w-fit">
                                     <motion.div

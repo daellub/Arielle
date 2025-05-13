@@ -1,13 +1,29 @@
 # backend/db/database.py
 
+import json
 import pymysql
+import pymysql.cursors
 from .config import DB_CONFIG
 from datetime import datetime
+from typing import List, Optional 
 
 from backend.utils.encryption import encrypt
 
 def get_connection():
     return pymysql.connect(**DB_CONFIG)
+
+def _get_logo_by_model_name(model_name: str):
+    """ 모델 이름을 기반으로 자동으로 로고 설정 """
+    logo_map = {
+        "OpenAI": "OpenAI.svg",
+        "PyTorch": "PyTorch.svg",
+        "Meta": "Meta.svg",
+        "TensorFlow": "Tensorflow.svg",
+        "Google": "Transformer.svg"
+    }
+    return f"/static/icons/{logo_map.get(model_name, 'default.svg')}"  # 백엔드 이미지 URL 반환
+
+# ── ASR 서버 함수 ──────────────────────────────────────────────────────
 
 def save_result_to_db(model_name: str, text: str, language: str = 'ko'):
     conn = None
@@ -26,18 +42,6 @@ def save_result_to_db(model_name: str, text: str, language: str = 'ko'):
     finally:
         if conn:
             conn.close()
-
-def _get_logo_by_model_name(model_name: str):
-    """ 모델 이름을 기반으로 자동으로 로고 설정 """
-    logo_map = {
-        "OpenAI": "OpenAI.svg",
-        "PyTorch": "PyTorch.svg",
-        "Meta": "Meta.svg",
-        "TensorFlow": "Tensorflow.svg",
-        "Google": "Transformer.svg"
-    }
-    return f"/static/icons/{logo_map.get(model_name, 'default.svg')}"  # 백엔드 이미지 URL 반환
-
 
 def save_model_to_db(model_id, model_info, latency=None):
     conn = None
@@ -146,6 +150,8 @@ def get_models_from_db():
         if conn:
             conn.close()
 
+# ── ASR 로그 저장 ──────────────────────────────────────────────────────
+
 def save_log_to_db(log_type: str, message: str, source: str = 'SYSTEM'):
     conn = None
     try:
@@ -161,6 +167,8 @@ def save_log_to_db(log_type: str, message: str, source: str = 'SYSTEM'):
     finally:
         if conn:
             conn.close()
+
+# ── 번역 결과 저장 ──────────────────────────────────────────────────────
 
 def save_translation_result(client_id: str, original: str, translated: str, target_lang: str, source_type: str):
     conn = None
@@ -180,12 +188,16 @@ def save_translation_result(client_id: str, original: str, translated: str, targ
         if conn:
             conn.close()
 
+# ── LLM 백엔드 함수 ──────────────────────────────────────────────────────
+
 def save_llm_interaction(
     model_name: str,
     request: str,
     response: str,
     translate_response: str,
-    ja_translate_response: str
+    ja_translate_response: str,
+    emotion: str,
+    tone: str,
 ) -> int:
     conn = None
     try:
@@ -193,15 +205,17 @@ def save_llm_interaction(
         with conn.cursor() as cursor:
             sql = """
                 INSERT INTO llm_interactions 
-                (model_name, request, response, translate_response, ja_translate_response)
-                VALUES (%s, %s, %s, %s, %s)
+                (model_name, request, response, translate_response, ja_translate_response, emotion, tone)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
             """
             cursor.execute(sql, (
                 model_name,
                 request,
                 response,
                 translate_response,
-                ja_translate_response
+                ja_translate_response,
+                emotion,
+                tone,
             ))
             interaction_id = cursor.lastrowid
         conn.commit()
@@ -258,3 +272,186 @@ def get_llm_interactions(limit: int = 100):
     finally:
         if conn:
             conn.close()
+
+# ── LLM 서버 CRUD 함수 ──────────────────────────────────────────────────────
+
+def save_llm_model_to_db(model_info):
+    conn = None
+    try:
+        conn = get_connection()
+        with conn.cursor() as cursor:
+            sql = """
+                INSERT INTO llm_models (name, type, endpoint, status, enabled, apiKey, token, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(sql, (
+                model_info.name,
+                model_info.type,
+                model_info.endpoint,
+                model_info.status,
+                model_info.enabled,
+                model_info.apiKey if model_info.apiKey else None,
+                model_info.token if model_info.token else None,
+                datetime.now()
+            ))
+        conn.commit()
+        return cursor.lastrowid
+    except Exception as e:
+        print("\033[91m" + f"[ERROR] LLM 모델 저장 실패: {e}" + "\033[0m")
+        raise
+    finally:
+        if conn:
+            conn.close()
+
+def get_llm_models_from_db():
+    conn = None
+    try:
+        conn = get_connection()
+        with conn.cursor(pymysql.cursors.DictCursor) as cursor:
+            sql = "SELECT id, name, type, endpoint, status, enabled, apiKey, token FROM llm_models"
+            cursor.execute(sql)
+            models = cursor.fetchall()
+            return models
+    except Exception as e:
+        print("\033[91m" + f"[ERROR] LLM 모델 조회 실패: {e}" + "\033[0m")
+        return []
+    finally:
+        if conn:
+            conn.close()
+
+def update_llm_model_in_db(model_id: int, model_info):
+    conn = None
+    try:
+        conn = get_connection()
+        with conn.cursor() as cursor:
+            sql = """
+                UPDATE llm_models
+                SET name = %s, endpoint = %s, type = %s, framework = %s, 
+                    enabled = %s, status = %s, apiKey = %s, token = %s
+                WHERE id = %s
+            """
+            cursor.execute(sql, (
+                model_info.name,
+                model_info.endpoint,
+                model_info.type,
+                model_info.framework,
+                model_info.enabled,
+                model_info.status,
+                model_info.apiKey if model_info.apiKey else None,
+                model_info.token if model_info.token else None,
+                model_id
+            ))
+        conn.commit()
+    except Exception as e:
+        print(f"[ERROR] 모델 상태 업데이트 실패: {e}")
+        raise
+    finally:
+        if conn:
+            conn.close()
+
+def delete_llm_model_from_db(model_id: int):
+    conn = None
+    try:
+        conn = get_connection()
+        with conn.cursor() as cursor:
+            sql = "DELETE FROM llm_models WHERE id = %s"
+            cursor.execute(sql, (model_id,))
+        conn.commit()
+    except Exception as e:
+        print(f"[ERROR] 모델 삭제 실패: {e}")
+        raise
+    finally:
+        if conn:
+            conn.close()
+
+
+# ── MCP 서버 CRUD 함수 ──────────────────────────────────────────────────────
+
+def list_mcp_servers() -> List[dict]:
+    """
+    등록된 MCP 서버 목록 조회
+    반환: alias, name, endpoint, type, auth_type, enabled, polling_interval 등 전체 컬럼
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor(pymysql.cursors.DictCursor) as cursor:
+            cursor.execute("SELECT * FROM mcp_servers")
+            return cursor.fetchall()
+    finally:
+        conn.close()
+
+def get_mcp_server(alias: str) -> Optional[dict]:
+    """
+    특정 MCP 서버 조회
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor(pymysql.cursors.DictCursor) as cursor:
+            cursor.execute("SELECT * FROM mcp_servers WHERE alias = %s", (alias,))
+            return cursor.fetchone()
+    finally:
+        conn.close()
+
+def create_mcp_server(data: dict):
+    """
+    새 MCP 서버 등록
+    data: {'alias','name','endpoint','type','auth_type','api_key','token','username','password','enabled','polling_interval'}
+    """
+    data['api_key'] = data.get('api_key', '')
+    data['token'] = data.get('token', '')
+    data['username'] = data.get('username', '')
+    data['password'] = data.get('password', '')
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as cursor:
+            sql = """
+                INSERT INTO mcp_servers
+                    (alias, name, endpoint, type, auth_type, api_key, token, username, password, enabled, polling_interval)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            cursor.execute(sql, (
+                data['alias'],
+                data['name'],
+                data['endpoint'],
+                data['type'],
+                data['auth_type'],
+                data['api_key'],
+                data['token'],
+                data['username'],
+                data['password'],
+                int(data['enabled']),
+                data['polling_interval']
+            ))
+        conn.commit()
+    finally:
+        conn.close()
+
+def update_mcp_server(alias: str, fields: dict):
+    """
+    MCP 서버 정보 업데이트
+    fields에는 변경할 컬럼명:값 쌍만 담아서 넘겨주세요.
+    """
+    if not fields:
+        return
+    conn = get_connection()
+    try:
+        with conn.cursor() as cursor:
+            sets = ", ".join(f"{k}=%s" for k in fields.keys())
+            sql = f"UPDATE mcp_servers SET {sets} WHERE alias = %s"
+            cursor.execute(sql, (*fields.values(), alias))
+        conn.commit()
+    finally:
+        conn.close()
+
+def delete_mcp_server(alias: str):
+    """
+    MCP 서버 삭제
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("DELETE FROM mcp_servers WHERE alias = %s", (alias,))
+        conn.commit()
+    finally:
+        conn.close()

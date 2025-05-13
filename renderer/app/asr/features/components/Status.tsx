@@ -8,7 +8,6 @@ import {
     TooltipTrigger,
     TooltipProvider
 } from '@/app/components/ui/tooltip'
-import clsx from 'clsx'
 
 import { Layers, HelpCircle } from 'lucide-react'
 import { useMicStore } from '@/app/asr/features/store/useMicStore'
@@ -40,7 +39,8 @@ export default function SystemStatus() {
         const fetchDbInfo = async () => {
             try {
                 const res = await axios.get('http://localhost:8000/api/asr/db/info')
-                setDatabaseInfo(res.data)
+                const filteredTables = res.data.tables.filter((table: string) => table.startsWith('asr'))
+                setDatabaseInfo({ ...res.data, tables: filteredTables })
             } catch (e) {
                 console.error('DB 정보 가져오기 실패:', e)
             }

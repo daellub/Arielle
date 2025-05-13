@@ -73,15 +73,13 @@ export default function TranslatePage() {
                     }}
                 />
             ))}
-            <div className="flex-1 overflow-y-auto relative z-10 p-6">
+            <div className="flex-1 overflow-hidden relative z-10 p-6">
                 <div className="flex-1 flex flex-col gap-6 px-20 pt-3 pb-20">
-                    {/* 타이틀 */}
                     <div className="flex items-center gap-4">
                         <Languages className="w-7 h-7 text-blue-400" />
                         <h1 className="text-2xl font-bold text-black">Translate</h1>
                     </div>
 
-                    {/* 번역 입력 & 통계 */}
                     <div className="flex gap-6 w-full items-start z-10">
                         <div className="flex-[3] max-w-[800px]">
                             <TranslatePanel
@@ -101,7 +99,6 @@ export default function TranslatePage() {
                         </div>
                     </div>
 
-                    {/* 번역 기록 */}
                     <TranslationHistoryList items={items} setItems={setItems} />
                 </div>
             </div>

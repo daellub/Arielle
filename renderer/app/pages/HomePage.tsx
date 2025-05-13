@@ -48,13 +48,13 @@ export default function HomePage({ selectedTab }: { selectedTab: string }) {
                                 </button>
                             </div>
                             <div className="flex justify-center">
-                                <Image
+                                {/* <Image
                                     src="/assets/arielle.png"
                                     alt="Arielle Character"
                                     width={320}
                                     height={480}
                                     className="rounded-2xl shadow-2xl object-cover"
-                                />
+                                /> */}
                             </div>
                         </motion.section>
                     )}

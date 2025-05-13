@@ -6,7 +6,6 @@ import clsx from 'clsx'
 import { MessageSquareText, Languages, Sparkles } from 'lucide-react'
 import TranslateCard from './TranslateCard'
 import { TranslationHistoryItem } from './TranslateHistoryList'
-import { useLLM } from '@/app/llm/hooks/useLLM'
 import axios from 'axios'
 
 import { useNotificationStore } from '@/app/store/useNotificationStore'
@@ -33,6 +32,13 @@ export default function TranslatePanel({ asrResult, onTranslate, items }: Props)
     const [activeTab, setActiveTab] = useState<'ASR' | 'LLM'>('ASR')
     const notify = useNotificationStore((s) => s.show)
 
+    const lastSavedIdRef = useRef<string | null>(null)
+
+    const llmMessages = useLLMStore((s) => s.messages)
+    const lastAssistantMsg = [...llmMessages]
+        .reverse()
+        .find((m) => m.role === 'assistant' && !!m.jaTranslatedMessage)
+
     const { send } = useLLMStream()
     const addMessage = useLLMStore((s) => s.addMessage)
 
@@ -57,6 +63,36 @@ export default function TranslatePanel({ asrResult, onTranslate, items }: Props)
         setAsrInput(asrResult)
         handleTranslate(asrResult, 'ASR')
     }, [asrResult])
+
+    useEffect(() => {
+        if (!lastAssistantMsg?.jaTranslatedMessage || !lastAssistantMsg.message) return
+
+        const content = lastAssistantMsg.message
+        const translated = lastAssistantMsg.jaTranslatedMessage
+
+        const uniqueKey = content + translated
+        if (lastSavedIdRef.current === uniqueKey) return
+        lastSavedIdRef.current = uniqueKey
+
+        const item: TranslationHistoryItem = {
+            id: Date.now().toString(),
+            original: content,                  // LLM 영어 응답
+            translated: translated,             // 일본어 번역
+            date: new Date().toISOString(),
+            targetLang: 'ja',
+            source: 'LLM',
+        }
+
+        onTranslate(item)
+
+        axios.post('http://localhost:8000/translate/save_translation', {
+            id: item.id,
+            original: item.original,
+            translated: item.translated,
+            targetLang: item.targetLang,
+            source: item.source,
+        })
+    }, [lastAssistantMsg?.jaTranslatedMessage])
 
     const handleTranslate = async (
         text: string = input,
@@ -234,10 +270,13 @@ export default function TranslatePanel({ asrResult, onTranslate, items }: Props)
                                 {activeTab === 'ASR' ? 'ASR 번역 결과' : 'LLM 번역 결과'}
                             </h3>
                         </div>
-                        <p className="text-sm leading-relaxed text-gray-800 font-MapoPeacefull">
+                        <p
+                            className="text-sm leading-relaxed text-gray-800 font-MapoPeacefull overflow-hidden text-ellipsis whitespace-nowrap"
+                            title={lastAssistantMsg?.jaTranslatedMessage}
+                        >
                             {activeTab === 'ASR'
                                 ? translated || '번역 결과 없음'
-                                : llmResult || 'LLM 결과 없음'}
+                                : lastAssistantMsg?.jaTranslatedMessage || 'LLM 결과 없음'}
                         </p>
                     </div>
                 </div>

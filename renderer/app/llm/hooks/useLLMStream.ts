@@ -34,20 +34,34 @@ export function useLLMStream() {
                 if (parsed.type === 'interaction_id') {
                     useLLMStore.setState((state) => {
                         const msgs = [...state.messages]
-                        const last = msgs[msgs.length - 1]
-                        if (last?.role === 'assistant') {
+                        const last = [...msgs].reverse().find((m) => m.role === 'assistant' && !m.interactionId)
+
+                        if (last) {
                             last.interactionId = parsed.id
                             last.translatedMessage = parsed.translated
+                            last.jaTranslatedMessage = parsed.ja_translated
+                            last.isFinal = true
+                        } else {
+                            console.warn('[❌ 마지막 메시지 못 찾음]', msgs)
                         }
+
                         return { messages: msgs }
                     })
+
+
+                    useLLMStore.getState().updateEmotionTone(
+                        parsed.id,
+                        parsed.emotion ?? 'neutral',
+                        parsed.tone ?? 'neutral'
+                    )
+
                     return
                 }
             } catch {
                 const state = useLLMStore.getState()
                 const msgs = state.messages
                 const last = msgs[msgs.length - 1]
-                
+
                 if (!last || last.role !== 'assistant') {
                     state.addMessage({
                         role: 'assistant',
