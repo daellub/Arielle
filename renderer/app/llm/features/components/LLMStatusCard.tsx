@@ -12,15 +12,19 @@ import {
 } from 'lucide-react'
 
 import { useLLMSettingsStore } from '@/app/llm/features/store/llmSettingsStore'
+import useMemoryStore from '@/app/llm/features/store/useMemoryStore'
+import useSamplingStore from '@/app/llm/features/store/useSamplingStore'
 
 export default function LLMStatusCard() {
+    const maxTokens = useMemoryStore(state => state.maxTokens)
+
+    const temperature = useSamplingStore(state => state.temperature)
+    const topK = useSamplingStore(state => state.topK)
+    const topP = useSamplingStore(state => state.topP)
+    const repetitionPenalty = useSamplingStore(state => state.repetitionPenalty)
+
     const {
         modelName,
-        maxTokens,
-        temperature,
-        topK,
-        topP,
-        repetitionPenalty,
         responseTime,
         device,
     } = useLLMSettingsStore()

@@ -1,25 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import axios from 'axios'
 import { Clock, FileText, AlertTriangle, Loader2, CheckCircle2 } from 'lucide-react'
 import clsx from 'clsx'
 
 interface LogEntry {
     timestamp: string
     type: 'INFO' | 'ERROR' | 'PROCESS' | 'RESULT'
-    source: 'FRONTEND' | 'BACKEND' | 'MODEL' | 'DB'
+    source: string
     message: string
 }
 
-const dummyLogs: LogEntry[] = [
-    { timestamp: '14:00:01', type: 'INFO',    source: 'MODEL',   message: 'MCP context initialized for session #4521' },
-    { timestamp: '14:00:05', type: 'PROCESS', source: 'MODEL',   message: 'Injected context prompt: "You are a helpful assistant."' },
-    { timestamp: '14:00:08', type: 'RESULT',  source: 'DB',      message: 'Saved context memory block (id=CTX1023)' },
-    { timestamp: '14:00:10', type: 'ERROR',   source: 'MODEL',   message: 'Failed to resolve dynamic variable: {persona}' },
-    { timestamp: '14:00:15', type: 'PROCESS', source: 'BACKEND', message: 'Context binding complete for LLM pipeline' },
-    { timestamp: '14:00:19', type: 'INFO',    source: 'MODEL',   message: 'Registered tool: "PersonaAnalyzer-v1"' },
-    { timestamp: '14:00:22', type: 'RESULT',  source: 'DB',      message: 'Stored 3 context prompts to persistent memory' }
-]
+// const dummyLogs: LogEntry[] = [
+//     { timestamp: '14:00:01', type: 'INFO',    source: 'MODEL',   message: 'MCP context initialized for session #4521' },
+//     { timestamp: '14:00:05', type: 'PROCESS', source: 'MODEL',   message: 'Injected context prompt: "You are a helpful assistant."' },
+//     { timestamp: '14:00:08', type: 'RESULT',  source: 'DB',      message: 'Saved context memory block (id=CTX1023)' },
+//     { timestamp: '14:00:10', type: 'ERROR',   source: 'MODEL',   message: 'Failed to resolve dynamic variable: {persona}' },
+//     { timestamp: '14:00:15', type: 'PROCESS', source: 'BACKEND', message: 'Context binding complete for LLM pipeline' },
+//     { timestamp: '14:00:19', type: 'INFO',    source: 'MODEL',   message: 'Registered tool: "PersonaAnalyzer-v1"' },
+//     { timestamp: '14:00:22', type: 'RESULT',  source: 'DB',      message: 'Stored 3 context prompts to persistent memory' }
+// ]
 
 function getLogIcon(type: LogEntry['type']) {
     switch (type) {
@@ -40,7 +41,13 @@ function getColor(type: LogEntry['type']) {
 }
 
 export default function LogsPanel() {
-    const [logs] = useState<LogEntry[]>(dummyLogs)
+    const [logs, setLogs] = useState<LogEntry[]>([])
+
+    useEffect(() => {
+        axios.get('http://localhost:8500/mcp/api/logs')
+            .then(res => setLogs(res.data))
+            .catch(err => console.error('로그 불러오기 실패:', err))
+    }, [])
 
     return (
         <div className="space-y-4">

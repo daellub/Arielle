@@ -455,3 +455,15 @@ def delete_mcp_server(alias: str):
         conn.commit()
     finally:
         conn.close()
+
+def insert_mcp_log(type: str, source: str, message: str):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute('''
+                INSERT INTO mcp_logs (type, source, message)
+                VALUES (%s, %s, %s)
+            ''', (type, source, message))
+        conn.commit()
+    finally:
+        conn.close()

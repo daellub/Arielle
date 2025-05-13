@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import axios from 'axios'
+import { useEffect, useState, useRef, memo } from 'react'
 import { createPortal } from 'react-dom'
 import {
     SlidersHorizontal,
@@ -15,39 +16,87 @@ import {
 } from 'lucide-react'
 import clsx from 'clsx'
 
+import useMemoryStore, { MemoryPrompt } from '@/app/llm/features/store/useMemoryStore'
+
 const strategies = ['None', 'Window', 'Summary', 'Hybrid'] as const
 
 type Strategy = typeof strategies[number]
 
-interface MemoryPrompt {
-    id: number
-    content: string
-    enabled: boolean
-}
-
 export default function MemoryContextPanel() {
-    const [strategy, setStrategy] = useState<Strategy>('Hybrid')
-    const [maxTokens, setMaxTokens] = useState(2048)
-    const [includeHistory, setIncludeHistory] = useState(true)
-    const [saveMemory, setSaveMemory] = useState(true)
-    const [prompts, setPrompts] = useState<MemoryPrompt[]>([
-        { id: 1, content: 'You are a helpful assistant that always answers kindly.', enabled: true },
-        { id: 2, content: 'User is roleplaying a medieval knight in a fantasy world.', enabled: true }
-    ])
+    const memoryStrategy = useMemoryStore(state => state.memoryStrategy)
+    const maxTokens = useMemoryStore(state => state.maxTokens)
+    const includeHistory = useMemoryStore(state => state.includeHistory)
+    const saveMemory = useMemoryStore(state => state.saveMemory)
+    const prompts = useMemoryStore(state => state.contextPrompts)
+    const updateMemorySettings = useMemoryStore(state => state.updateMemorySettings)
+
     const [showAddModal, setShowAddModal] = useState(false)
     const [newPrompt, setNewPrompt] = useState('')
+    const saveTimer = useRef<NodeJS.Timeout | null>(null)
 
+    useEffect(() => {
+        axios.get('http://localhost:8500/mcp/api/memory/settings')
+            .then(res => {
+                const { memory_strategy, max_tokens, include_history, save_memory, context_prompts } = res.data
+                updateMemorySettings({
+                    memoryStrategy: memory_strategy,
+                    maxTokens: max_tokens,
+                    includeHistory: include_history,
+                    saveMemory: save_memory,
+                    contextPrompts: context_prompts
+                })
+            })
+            .catch(err => {
+                if (err.response?.status === 404) {
+                    axios.post('http://localhost:8500/mcp/api/memory/settings', {
+                        memory_strategy: memoryStrategy,
+                        max_tokens: maxTokens,
+                        include_history: includeHistory,
+                        save_memory: saveMemory,
+                        context_prompts: prompts
+                    })
+                    .then(() => {
+                        console.log('기본 메모리 설정 DB에 저장됨')
+                    })
+                    .catch(console.error)
+                } else {
+                    console.error('Failed to fetch memory settings:', err)
+                }
+            })
+    }, [])
+
+    useEffect(() => {
+        if (saveTimer.current) clearTimeout(saveTimer.current)
+        saveTimer.current = setTimeout(() => {
+            axios.patch('http://localhost:8500/mcp/api/memory/settings', {
+                memory_strategy: memoryStrategy,
+                max_tokens: maxTokens,
+                include_history: includeHistory,
+                save_memory: saveMemory,
+                context_prompts: prompts
+            }).catch(error => console.error('Failed to save memory settings:', error))
+        }, 1000)
+        return () => {
+            if (saveTimer.current) clearTimeout(saveTimer.current)
+        }
+    }, [memoryStrategy, maxTokens, includeHistory, saveMemory, prompts])
+
+    const handleStrategyChange = (s: Strategy) => updateMemorySettings({ memoryStrategy: s })
+    const handleMaxTokensChange = (n: number) => updateMemorySettings({ maxTokens: n })
+    const toggleIncludeHistory = () => updateMemorySettings({ includeHistory: !includeHistory })
+    const toggleSaveMemory = () => updateMemorySettings({ saveMemory: !saveMemory })
     const togglePrompt = (id: number) => {
-        setPrompts(prev => prev.map(p => p.id === id ? { ...p, enabled: !p.enabled } : p))
+        const updated = prompts.map(p => p.id === id ? { ...p, enabled: !p.enabled } : p)
+        updateMemorySettings({ contextPrompts: updated })
     }
-
     const removePrompt = (id: number) => {
-        setPrompts(prev => prev.filter(p => p.id !== id))
+        const updated = prompts.filter(p => p.id !== id)
+        updateMemorySettings({ contextPrompts: updated })
     }
-
     const addPrompt = () => {
         const nextId = prompts.length ? Math.max(...prompts.map(p => p.id)) + 1 : 1
-        setPrompts(prev => [...prev, { id: nextId, content: newPrompt.trim(), enabled: true }])
+        const updated = [...prompts, { id: nextId, content: newPrompt.trim(), enabled: true }]
+        updateMemorySettings({ contextPrompts: updated })
         setNewPrompt('')
         setShowAddModal(false)
     }
@@ -66,8 +115,8 @@ export default function MemoryContextPanel() {
                     <span className="text-sm text-white">Memory Strategy</span>
                     <select
                         className="bg-white/10 text-white text-sm rounded px-2 py-1"
-                        value={strategy}
-                        onChange={e => setStrategy(e.target.value as Strategy)}
+                        value={memoryStrategy}
+                        onChange={e => handleStrategyChange(e.target.value as Strategy)}
                     >
                         {strategies.map(s => (
                             <option key={s} value={s} className="text-black">{s}</option>
@@ -80,14 +129,14 @@ export default function MemoryContextPanel() {
                         type="number"
                         className="bg-white/10 text-white text-sm rounded px-2 py-1 w-[100px]"
                         value={maxTokens}
-                        onChange={e => setMaxTokens(Number(e.target.value))}
+                        onChange={e => handleMaxTokensChange(Number(e.target.value))}
                     />
                 </div>
                 <div className="flex justify-between items-center p-2 bg-white/5 rounded">
                     <span className="text-sm text-white">Include History</span>
                     <button
                         className="text-white/40 hover:text-white"
-                        onClick={() => setIncludeHistory(!includeHistory)}
+                        onClick={toggleIncludeHistory}
                     >
                         {includeHistory
                             ? <ToggleRight className="w-5 h-5 text-indigo-400" />
@@ -99,7 +148,7 @@ export default function MemoryContextPanel() {
                     <span className="text-sm text-white">Save Memory</span>
                     <button
                         className="text-white/40 hover:text-white"
-                        onClick={() => setSaveMemory(!saveMemory)}
+                        onClick={toggleSaveMemory}
                     >
                         {saveMemory
                             ? <ToggleRight className="w-5 h-5 text-indigo-400" />
@@ -109,7 +158,6 @@ export default function MemoryContextPanel() {
                 </div>
             </div>
 
-            {/* Prompts List */}
             <div className="space-y-2">
                 <div className="flex items-center gap-2 text-white font-semibold">
                     <NotepadText className="w-4 h-4 text-white/70" />
@@ -149,7 +197,6 @@ export default function MemoryContextPanel() {
                 </button>
             </div>
 
-            {/* Add Prompt Modal */}
             {showAddModal && createPortal(
                 <div
                     className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"

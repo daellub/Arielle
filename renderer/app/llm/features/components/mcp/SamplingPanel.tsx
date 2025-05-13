@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import axios from 'axios'
+import { useEffect, useRef } from 'react'
 import {
     SlidersHorizontal,
     Thermometer,
@@ -13,18 +14,75 @@ import {
 } from 'lucide-react'
 import clsx from 'clsx'
 
+import useSamplingStore from '@/app/llm/features/store/useSamplingStore'
+
 export default function SamplingPanel() {
-    const [temperature, setTemperature] = useState(1.0)
-    const [topK, setTopK] = useState(40)
-    const [topP, setTopP] = useState(0.95)
-    const [repetitionPenalty, setRepetitionPenalty] = useState(1.05)
+    const { temperature, topK, topP, repetitionPenalty } = useSamplingStore(state => state)
+
+    const updateSamplingSettings = useSamplingStore(state => state.updateSamplingSettings)
+
+    const handleTemperatureChange = (value: number) => updateSamplingSettings({ temperature: value })
+    const handleTopKChange = (value: number) => updateSamplingSettings({ topK: value })
+    const handleTopPChange = (value: number) => updateSamplingSettings({ topP: value })
+    const handleRepetitionPenaltyChange = (value: number) => updateSamplingSettings({ repetitionPenalty: value })
+
+    const saveTimer = useRef<NodeJS.Timeout | null>(null)
 
     const resetDefaults = () => {
-        setTemperature(1.0)
-        setTopK(40)
-        setTopP(0.95)
-        setRepetitionPenalty(1.05)
+        updateSamplingSettings({ temperature: 1.0, topK: 40, topP: 0.9, repetitionPenalty: 1.1 })
     }
+    
+    useEffect(() => {
+        axios.get('http://localhost:8500/mcp/api/sampling/settings')
+            .then(res => {
+                const { temperature, top_k, top_p, repetition_penalty } = res.data
+                updateSamplingSettings({
+                    temperature: temperature,
+                    topK: top_k,
+                    topP: top_p,
+                    repetitionPenalty: repetition_penalty
+                })
+            })
+            .catch(err => {
+                if (err.response?.status === 404) {
+                    axios.post('http://localhost:8500/mcp/api/sampling/settings', {
+                        temperature: temperature,
+                        top_k: topK,
+                        top_p: topP,
+                        repetition_penalty: repetitionPenalty,
+                    })
+                    .then(() => {
+                        console.log('기본 설정이 저장되었습니다.')
+                    })
+                    .catch(console.error)
+                } else {
+                    console.error('Error fetching sampling settings:', err)
+                }
+            })
+    }, [])
+
+    useEffect(() => {
+        if (saveTimer.current) clearTimeout(saveTimer.current)
+
+        saveTimer.current = setTimeout(() => {
+            axios.patch('http://localhost:8500/mcp/api/sampling/settings', {
+                temperature: temperature,
+                top_k: topK,
+                top_p: topP,
+                repetition_penalty: repetitionPenalty,
+            })
+            .then(() => {
+                console.log('설정이 저장되었습니다.')
+            })
+            .catch(console.error)
+        }, 1000)
+
+        return () => {
+            if (saveTimer.current) {
+                clearTimeout(saveTimer.current)
+            }
+        }
+    }, [temperature, topK, topP, repetitionPenalty])
 
     return (
         <div className="space-y-4">
@@ -43,7 +101,7 @@ export default function SamplingPanel() {
                         min: 0,
                         max: 2,
                         step: 0.01,
-                        onChange: setTemperature
+                        onChange: handleTemperatureChange
                     },
                     {
                         icon: <List className="w-5 h-5 text-white/40" />, 
@@ -53,7 +111,7 @@ export default function SamplingPanel() {
                         min: 0,
                         max: 1000,
                         step: 1,
-                        onChange: setTopK
+                        onChange: handleTopKChange
                     },
                     {
                         icon: <Percent className="w-5 h-5 text-white/40" />, 
@@ -63,7 +121,7 @@ export default function SamplingPanel() {
                         min: 0,
                         max: 1,
                         step: 0.01,
-                        onChange: setTopP
+                        onChange: handleTopPChange
                     },
                     {
                         icon: <Repeat className="w-5 h-5 text-white/40" />, 
@@ -73,7 +131,7 @@ export default function SamplingPanel() {
                         min: 1,
                         max: 2,
                         step: 0.01,
-                        onChange: setRepetitionPenalty
+                        onChange: handleRepetitionPenaltyChange
                     }
                 ].map(({ icon, label, desc, value, min, max, step, onChange }) => (
                     <div key={label} className="flex justify-between items-center p-2 bg-white/5 rounded">

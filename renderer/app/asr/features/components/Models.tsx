@@ -127,7 +127,7 @@ export default function Models({ onOpenSettings, onOpenAddModel, onModelAdded, o
             <section className={clsx(
                 "relative w-full min-w-[300px] max-w-[300px] min-h-[665px] max-h-[665px] ml-[80px] mt-[20px] px-6 py-6",
                 "bg-white/50 backdrop-blur-md border border-white/10 shadow-[inset_0_4px_12px_rgba(0,0,0,0.08)]",
-                "rounded-2xl transition-all overflow-visible"
+                "rounded-2xl transition-all overflow-visible z-20"
             )}>
                 <div className='flex items-center justify-between mb-4'>
                     <div className='relative' ref={panelRef}>
