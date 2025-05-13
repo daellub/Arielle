@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
-from backend.db.database import get_connection
+from backend.db.database import get_connection, insert_mcp_log
 import json
 
 router = APIRouter(prefix="/api")
@@ -52,7 +52,9 @@ async def create_prompt(prompt: PromptIn):
                 VALUES (%s, %s, %s, %s)
             """, (prompt.name, prompt.description, prompt.full, json.dumps(prompt.variables)))
             conn.commit()
-
+            
+            insert_mcp_log("INFO", "PROMPT", f"Created prompt: {prompt.name}")
+            
             return PromptOut(
                 id=cursor.lastrowid,
                 name=prompt.name,
@@ -117,6 +119,17 @@ async def update_prompt_in_db(prompt_id: int, prompt: PromptIn):
             if cursor.rowcount == 0:
                 raise HTTPException(status_code=404, detail="Prompt not found")
 
+            changed_fields = [label for field, label in zip(
+                [prompt.name != existing_prompt[1],
+                 prompt.description != existing_prompt[2],
+                 prompt.full != existing_prompt[3],
+                 prompt.variables != json.loads(existing_prompt[4]),
+                 prompt.enabled != existing_prompt[5]],
+                ['name', 'description', 'template', 'variables', 'enabled']
+            ) if field]
+
+            insert_mcp_log("INFO", "PROMPT", f"Updated prompt (id={prompt_id}): {prompt.name} ({', '.join(changed_fields)})")
+
             return PromptOut(
                 id=prompt_id,
                 name=prompt.name,
@@ -136,6 +149,8 @@ async def delete_prompt(prompt_id: int):
             cursor.execute("DELETE FROM mcp_prompts WHERE id = %s", (prompt_id,))
             conn.commit()
 
+            insert_mcp_log("INFO", "PROMPT", f"Deleted prompt: id={prompt_id}")
+            
             if cursor.rowcount == 0:
                 raise HTTPException(status_code=404, detail="Prompt not found")
     finally:
