@@ -9,7 +9,8 @@ from backend.db.database import (
     get_mcp_server,
     create_mcp_server,
     update_mcp_server,
-    delete_mcp_server
+    delete_mcp_server,
+    insert_mcp_log
 )
 
 router = APIRouter()
@@ -48,6 +49,7 @@ async def api_create_server(server: ServerIn):
     if get_mcp_server(server.alias):
         raise HTTPException(status_code=400, detail="Alias 중복")
     create_mcp_server(server.model_dump())
+    insert_mcp_log("INFO", "MCP-SERVER", f"Registered server: alias={server.alias}, type={server.type}")
     return {"ok": True}
 
 @router.patch("/servers/{alias}")
@@ -55,6 +57,8 @@ async def api_update_server(alias: str, fields: ServerIn):
     if not get_mcp_server(alias):
         raise HTTPException(status_code=404, detail="서버 없음")
     update_mcp_server(alias, fields.model_dump(exclude_unset=True))
+    updated_fields = ", ".join(fields.model_dump(exclude_unset=True).keys())
+    insert_mcp_log("INFO", "MCP-SERVER", f"Updated server '{alias}' fields: {updated_fields}")
     return {"ok": True}
 
 @router.delete("/servers/{alias}", status_code=204)
@@ -62,6 +66,7 @@ async def api_delete_server(alias: str):
     if not get_mcp_server(alias):
         raise HTTPException(status_code=404, detail="서버 없음")
     delete_mcp_server(alias)
+    insert_mcp_log("INFO", "MCP-SERVER", f"Deleted server: alias={alias}")
 
 @router.get("/servers/{alias}/status")
 async def api_server_status(alias: str):
@@ -78,6 +83,7 @@ async def api_server_status(alias: str):
         status = "inactive"
         
     latency = int((time.monotonic() - start) * 1000)
+    insert_mcp_log("PROCESS", "MCP-SERVER", f"Checked status of '{alias}': {status}, {latency}ms")
     return {
         "status": status,
         "latency": latency,
