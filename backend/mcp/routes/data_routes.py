@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
-from backend.db.database import get_connection
+from backend.db.database import get_connection, insert_mcp_log
 
 router = APIRouter(prefix="/api")
 
@@ -40,6 +40,7 @@ async def create_local_source(source: LocalSourceIn):
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (source.name, source.path, source.type, source.status, source.enabled, source.host, source.port, source.username, source.password))
             conn.commit()
+            insert_mcp_log("INFO", "DATA", f"Created local source: {source.name} → {source.path}")
             return {**source.dict(), 'id': cursor.lastrowid}
     finally:
         conn.close()
@@ -54,6 +55,7 @@ async def create_remote_source(source: RemoteSourceIn):
                 VALUES (%s, %s, %s, %s, %s)
             """, (source.name, source.endpoint, source.auth, source.status, source.enabled))
             conn.commit()
+            insert_mcp_log("INFO", "DATA", f"Created remote source: {source.name} → {source.endpoint}")
             return {**source.dict(), 'id': cursor.lastrowid}
     finally:
         conn.close()
@@ -91,6 +93,7 @@ async def update_local_source(source_id: int, source: LocalSourceIn):
                 WHERE id = %s
             """, (source.name, source.path, source.type, source.status, source.enabled, source.host, source.port, source.username, source.password, source_id))
             conn.commit()
+            insert_mcp_log("INFO", "DATA", f"Updated local source (id={source_id}): {source.name}")
             return {**source.dict(), 'id': source_id}
     finally:
         conn.close()
@@ -106,6 +109,7 @@ async def update_remote_source(source_id: int, source: RemoteSourceIn):
                 WHERE id = %s
             """, (source.name, source.endpoint, source.auth, source.status, source.enabled, source_id))
             conn.commit()
+            insert_mcp_log("INFO", "DATA", f"Updated remote source (id={source_id}): {source.name}")
             return {**source.dict(), 'id': source_id}
     finally:
         conn.close()
@@ -117,6 +121,7 @@ async def delete_local_source(source_id: int):
         with conn.cursor() as cursor:
             cursor.execute("DELETE FROM local_sources WHERE id = %s", (source_id,))
             conn.commit()
+            insert_mcp_log("INFO", "DATA", f"Deleted local source (id={source_id})")
             return {"message": "Local source deleted successfully"}
     finally:
         conn.close()
@@ -128,6 +133,7 @@ async def delete_remote_source(source_id: int):
         with conn.cursor() as cursor:
             cursor.execute("DELETE FROM remote_sources WHERE id = %s", (source_id,))
             conn.commit()
+            insert_mcp_log("INFO", "DATA", f"Deleted remote source (id={source_id})")
             return {"message": "Remote source deleted successfully"}
     finally:
         conn.close()
