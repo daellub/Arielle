@@ -1,7 +1,7 @@
 # backend/mcp/routes/security_routes.py
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from backend.db.database import get_connection
+from backend.db.database import get_connection, insert_mcp_log
 import json
 
 router = APIRouter(prefix="/api")
@@ -50,6 +50,12 @@ async def save_security_settings(settings: SecuritySettings):
                 settings.disable_auth
             ))
             conn.commit()
+
+            insert_mcp_log(
+                "INFO",
+                "SECURITY",
+                f"Initial security settings saved: apiKeyRequired={settings.api_key_required}, rateLimit={settings.rate_limit}, useJWT={settings.use_jwt}, disableAuth={settings.disable_auth}"
+            )
             return {"message": "Security settings saved"}
     finally:
         conn.close()
@@ -75,6 +81,12 @@ async def update_security_settings(settings: SecuritySettings):
                 settings.disable_auth
             ))
             conn.commit()
+
+            insert_mcp_log(
+                "INFO",
+                "SECURITY",
+                f"Updated security settings: apiKeyRequired={settings.api_key_required}, rateLimit={settings.rate_limit}, useJWT={settings.use_jwt}, disableAuth={settings.disable_auth}, origins={settings.allowed_origins}"
+            )
             return {"message": "Security settings updated"}
     finally:
         conn.close()

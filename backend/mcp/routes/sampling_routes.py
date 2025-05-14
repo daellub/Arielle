@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from backend.db.database import get_connection
+from backend.db.database import get_connection, insert_mcp_log
 
 router = APIRouter(prefix="/api")
 
@@ -42,6 +42,12 @@ async def save_sampling_settings(settings: SamplingSettings):
                 ) VALUES (%s, %s, %s, %s)
             ''', (settings.temperature, settings.top_k, settings.top_p, settings.repetition_penalty))
             conn.commit()
+
+            insert_mcp_log(
+                "INFO",
+                "SAMPLING",
+                f"Initial sampling settings saved: temp={settings.temperature}, top_k={settings.top_k}, top_p={settings.top_p}, penalty={settings.repetition_penalty}"
+            )
             return {"message": "Sampling settings saved"}
     finally:
         conn.close()
@@ -57,6 +63,12 @@ async def update_sampling_settings(settings: SamplingSettings):
                 WHERE id = 1
             ''', (settings.temperature, settings.top_k, settings.top_p, settings.repetition_penalty))
             conn.commit()
+
+            insert_mcp_log(
+                "INFO",
+                "SAMPLING",
+                f"Updated sampling: temp={settings.temperature}, top_k={settings.top_k}, top_p={settings.top_p}, penalty={settings.repetition_penalty}"
+            )
             return {"message": "Sampling settings updated"}
     finally:
         conn.close()

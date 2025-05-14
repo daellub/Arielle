@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from datetime import datetime
 import json
 
-from backend.db.database import get_connection
+from backend.db.database import get_connection, insert_mcp_log
 
 router = APIRouter(prefix="/api")
 
@@ -54,6 +54,12 @@ async def save_memory_settings(settings: MemoryContextSettings):
             
             conn.commit()
 
+            insert_mcp_log(
+                "INFO",
+                "MEMORY",
+                f"Initial memory settings saved: strategy={settings.memory_strategy}, max_tokens={settings.max_tokens}"
+            )
+
             return {"message": "Settings saved successfully"}
     finally:
         conn.close()
@@ -70,6 +76,12 @@ async def update_memory_settings(settings: MemoryContextSettings):
             ''', (settings.memory_strategy, settings.max_tokens, settings.include_history, settings.save_memory, json.dumps(settings.context_prompts)))
             
             conn.commit()
+
+            insert_mcp_log(
+                "INFO",
+                "MEMORY",
+                f"Updated memory settings: strategy={settings.memory_strategy}, max_tokens={settings.max_tokens}, history={settings.include_history}, save={settings.save_memory}, prompts={len(settings.context_prompts)}"
+            )
 
             return {"message": "Settings updated successfully"}
     finally:

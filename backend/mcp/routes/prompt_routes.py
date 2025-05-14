@@ -121,10 +121,10 @@ async def update_prompt_in_db(prompt_id: int, prompt: PromptIn):
 
             changed_fields = [label for field, label in zip(
                 [prompt.name != existing_prompt[1],
-                 prompt.description != existing_prompt[2],
-                 prompt.full != existing_prompt[3],
-                 prompt.variables != json.loads(existing_prompt[4]),
-                 prompt.enabled != existing_prompt[5]],
+                prompt.description != existing_prompt[2],
+                prompt.full != existing_prompt[3],
+                prompt.variables != json.loads(existing_prompt[4]),
+                prompt.enabled != existing_prompt[5]],
                 ['name', 'description', 'template', 'variables', 'enabled']
             ) if field]
 

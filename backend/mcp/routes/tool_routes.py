@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import List
-from backend.db.database import get_connection
+from backend.db.database import get_connection, insert_mcp_log
 
 import subprocess
 import shlex
@@ -52,6 +52,8 @@ async def create_tool(tool: ToolIn):
                 VALUES (%s, %s, %s, %s, %s)
             """, (tool.name, tool.type, tool.command, tool.status, tool.enabled))
             conn.commit()
+
+            insert_mcp_log("INFO", "TOOL", f"Created tool: {tool.name} ({tool.type})")
             return ToolOut(id=cur.lastrowid, **tool.dict())
     finally:
         conn.close()
@@ -69,6 +71,8 @@ async def update_tool(tool_id: int, tool: ToolIn):
             conn.commit()
             if cur.rowcount == 0:
                 raise HTTPException(status_code=404, detail="Tool not found")
+            
+            insert_mcp_log("INFO", "TOOL", f"Updated tool (id={tool_id}): {tool.name}")
             return ToolOut(id=tool_id, **tool.dict())
     finally:
         conn.close()
@@ -82,6 +86,8 @@ async def delete_tool(tool_id: int):
             conn.commit()
             if cur.rowcount == 0:
                 raise HTTPException(status_code=404, detail="Tool not found")
+            
+            insert_mcp_log("INFO", "TOOL", f"Deleted tool: id={tool_id}")
     finally:
         conn.close()
 
@@ -96,8 +102,11 @@ async def execute_python_script(command: str = Query(..., description="Python co
             ['python', '-c', decoded_command],
             text=True, capture_output=True, check=True
         )
+
+        insert_mcp_log("PROCESS", "TOOL", f"Executed python tool: {decoded_command}")
         return {"result": result.stdout.strip()}
     except subprocess.CalledProcessError as e:
+        insert_mcp_log("ERROR", "TOOL", f"Python tool execution failed: {decoded_command}")
         return {"error": f"Execution failed: {e.stderr}"}
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
@@ -109,8 +118,11 @@ async def execute_powershell_script(command: str = Query(..., description="Power
             ['powershell', '-Command', command],
             text=True, capture_output=True, check=True
         )
+
+        insert_mcp_log("PROCESS", "TOOL", f"Executed PowerShell tool: {command}")
         return {"result": result.stdout}
     except subprocess.CalledProcessError as e:
+        insert_mcp_log("ERROR", "TOOL", f"PowerShell execution failed: {command}")
         return {"error": f"Execution failed: {e.stderr}"}
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
