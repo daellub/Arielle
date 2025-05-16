@@ -12,16 +12,6 @@ interface LogEntry {
     message: string
 }
 
-// const dummyLogs: LogEntry[] = [
-//     { timestamp: '14:00:01', type: 'INFO',    source: 'MODEL',   message: 'MCP context initialized for session #4521' },
-//     { timestamp: '14:00:05', type: 'PROCESS', source: 'MODEL',   message: 'Injected context prompt: "You are a helpful assistant."' },
-//     { timestamp: '14:00:08', type: 'RESULT',  source: 'DB',      message: 'Saved context memory block (id=CTX1023)' },
-//     { timestamp: '14:00:10', type: 'ERROR',   source: 'MODEL',   message: 'Failed to resolve dynamic variable: {persona}' },
-//     { timestamp: '14:00:15', type: 'PROCESS', source: 'BACKEND', message: 'Context binding complete for LLM pipeline' },
-//     { timestamp: '14:00:19', type: 'INFO',    source: 'MODEL',   message: 'Registered tool: "PersonaAnalyzer-v1"' },
-//     { timestamp: '14:00:22', type: 'RESULT',  source: 'DB',      message: 'Stored 3 context prompts to persistent memory' }
-// ]
-
 function getLogIcon(type: LogEntry['type']) {
     switch (type) {
         case 'INFO':    return <FileText className="w-4 h-4 text-white/60" />
@@ -42,6 +32,15 @@ function getColor(type: LogEntry['type']) {
 
 export default function LogsPanel() {
     const [logs, setLogs] = useState<LogEntry[]>([])
+    const [expandedLogs, setExpandedLogs] = useState<Set<number>>(new Set())
+
+    const toggleExpanded = (index: number) => {
+        setExpandedLogs(prev => {
+            const copy = new Set(prev)
+            copy.has(index) ? copy.delete(index) : copy.add(index)
+            return copy
+        })
+    }
 
     useEffect(() => {
         axios.get('http://localhost:8500/mcp/api/logs')
@@ -56,7 +55,7 @@ export default function LogsPanel() {
                 <span>Logs</span>
             </div>
 
-            <div className="space-y-2 text-sm max-h-[400px] overflow-y-auto pr-1">
+            <div className="scrollLLMArea space-y-2 text-sm max-h-[360px] overflow-y-auto pr-1 overflow-x-hidden">
                 {logs.map((log, i) => (
                     <div key={i} className="flex items-start gap-2">
                         <div className="pt-0.5">{getLogIcon(log.type)}</div>
@@ -66,7 +65,15 @@ export default function LogsPanel() {
                                 <span className="w-[80px]">{log.source}</span>
                                 <span className="w-[70px]">{log.type}</span>
                             </div>
-                            <div className="text-white/60 leading-snug break-all">{log.message}</div>
+                            <div
+                                className={clsx(
+                                    "text-white/60 leading-snug break-all cursor-pointer transition-all duration-200",
+                                    !expandedLogs.has(i) && "line-clamp-2"
+                                )}
+                                onClick={() => toggleExpanded(i)}
+                            >
+                                {log.message}
+                            </div>
                         </div>
                     </div>
                 ))}

@@ -1,7 +1,7 @@
 'use client'
 
 import axios from 'axios'
-import { use, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
     FileText,
@@ -11,10 +11,12 @@ import {
     Save,
     X,
     Pencil,
-    ToggleLeft,
-    ToggleRight
+    CheckCircle,
+    XCircle
 } from 'lucide-react'
+import clsx from 'clsx'
 
+import { useMCPStore } from '@/app/llm/features/store/useMCPStore'
 import { useNotificationStore } from '@/app/store/useNotificationStore'
 
 interface PromptEntry {
@@ -28,6 +30,8 @@ interface PromptEntry {
 
 export default function PromptsPanel() {
     const [prompts, setPrompts] = useState<PromptEntry[]>([])
+    const [linkedIds, setLinkedIds] = useState<number[]>([])
+    const activeModelId = useMCPStore(s => s.activeModelId)
     const [selectedPrompt, setSelectedPrompt] = useState<PromptEntry | null>(null)
     const [showAddModal, setShowAddModal] = useState(false)
     const [showEditModal, setShowEditModal] = useState(false)
@@ -42,17 +46,19 @@ export default function PromptsPanel() {
 
     const notify = useNotificationStore((s) => s.show)
 
-    useEffect(() => {
-        const fetchPrompts = async () => {
-            try {
-                const response = await axios.get('http://localhost:8500/mcp/api/prompts')
-                setPrompts(response.data)
-            } catch (err) {
-                console.error('프롬프트를 가져오는 중 오류 발생:', err)
-            }
-        }
-        fetchPrompts()
-    }, [])
+    const loadPrompts = async () => {
+        const res = await axios.get('http://localhost:8500/mcp/api/prompts')
+        setPrompts(res.data)
+    }
+
+    const loadLinked = async () => {
+        if (!activeModelId) return
+        const res = await axios.get(`http://localhost:8500/mcp/llm/model/${activeModelId}/prompts`)
+        setLinkedIds(res.data.prompt_ids)
+    }
+
+    useEffect(() => { loadPrompts() }, [])
+    useEffect(() => { loadLinked() }, [activeModelId])
 
     const generatePreview = (fullText: string) => {
         return fullText.slice(0, 100)
@@ -154,6 +160,35 @@ export default function PromptsPanel() {
         }
     }
 
+    const handleToggleLink = async (promptId: number) => {
+        if (!activeModelId) return notify('모델을 먼저 선택해 주세요.', 'error')
+
+        const updated = linkedIds.includes(promptId)
+            ? linkedIds.filter(id => id !== promptId)
+            : [...linkedIds, promptId]
+
+        setLinkedIds(updated)
+
+        try {
+            await axios.patch(
+                `http://localhost:8500/mcp/llm/model/${activeModelId}/prompts`,
+                { prompt_ids: updated }
+            )
+
+            const paramRes = await axios.get(`http://localhost:8500/mcp/llm/model/${activeModelId}/params`)
+            const params = paramRes.data || {}
+            await axios.patch(
+                `http://localhost:8500/mcp/llm/model/${activeModelId}/params`,
+                { ...params, prompts: updated }
+            )
+
+            notify('프롬프트 연동이 업데이트되었습니다.', 'success')
+        } catch (err) {
+            console.error(err)
+            notify('연동 정보 업데이트 실패', 'error')
+        }
+    }
+
     return (
         <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -183,6 +218,20 @@ export default function PromptsPanel() {
                             <span className="text-white font-medium">{p.name}</span>
                         </div>
                         <div className="flex items-center gap-2">
+                            <button
+                                className={clsx(
+                                    'px-2 py-0.5 rounded-full text-[10px] border transition',
+                                    p.id !== undefined && linkedIds.includes(p.id)
+                                        ? 'bg-indigo-500 text-white border-indigo-400'
+                                        : 'bg-white/10 text-white/40 border-white/20 hover:bg-white/20'
+                                )}
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleToggleLink(p.id!)
+                                }}
+                            >
+                                {p.id !== undefined && linkedIds.includes(p.id) ? '연결됨' : '미연결'}
+                            </button>
                             <button 
                                 className='text-white/40 hover:text-white/70'
                                 onClick={(e) => {

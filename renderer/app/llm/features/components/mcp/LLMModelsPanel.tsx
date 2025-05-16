@@ -1,6 +1,7 @@
 // app/llm/features/components/mcp/LLMModelsPanel.tsx
 'use client'
 
+import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import clsx from 'clsx'
@@ -13,8 +14,9 @@ import {
     WifiOff,
     Puzzle 
 } from 'lucide-react'
-import Tooltip from '../LLMTooltip'
 import { useNotificationStore } from '@/app/store/useNotificationStore'
+import { useMCPStore } from '@/app/llm/features/store/useMCPStore'
+import LLMModelDetail from './LLMModelDetail'
 
 interface LLMModel {
     id: string
@@ -43,6 +45,10 @@ export default function LLMModelsPanel() {
     const [loading, setLoading] = useState(false)
     const [showAddModal, setShowAddModal] = useState(false)
     const notify = useNotificationStore((s) => s.show)
+    const activeModelId = useMCPStore(s => s.activeModelId)
+    const setActiveModel = useMCPStore(s => s.setActiveModel)
+    const updateConfig = useMCPStore(s => s.updateConfig)
+    const [expandedModelId, setExpandedModelId] = useState<string | null>(null)
 
     useEffect(() => {
         loadModels()
@@ -51,7 +57,7 @@ export default function LLMModelsPanel() {
     async function loadModels() {
         setLoading(true)
         try {
-            const response = await axios.get('http://localhost:8500/mcp/llm/models')
+            const response = await axios.get('http://localhost:8500/mcp/llm/model')
             setModels(response.data.models)
         } catch (error) {
             console.error('Error loading models:', error)
@@ -78,7 +84,7 @@ export default function LLMModelsPanel() {
                 type: 'Chatbot',
                 framework: 'LLaMA',
                 status: 'inactive',
-                enabled: true,
+                enabled: false,
                 apiKey: '',
                 token: '',
             })
@@ -114,23 +120,17 @@ export default function LLMModelsPanel() {
 
             console.log("Updated Model:", updatedModel)
 
-            // 모델의 필수 필드가 비어있다면 기본값 설정
             if (!updatedModel.name || !updatedModel.endpoint || !updatedModel.type || !updatedModel.framework) {
                 notify('모델의 필수 항목을 모두 입력해주세요.', 'info')
                 return
             }
 
-            updatedModel.framework = updatedModel.framework || 'defaultFramework'
-
-            // status와 enabled 값에 맞게 일관성 있게 설정
             updatedModel.enabled = enabled
             updatedModel.status = enabled ? 'active' : 'inactive'
 
-            // apiKey와 token이 null이면 빈 문자열로 처리
             const apiKey = updatedModel.apiKey || ''
             const token = updatedModel.token || ''
 
-            // axios 요청 보내기
             const response = await axios.patch(`http://localhost:8500/mcp/llm/model/${modelId}`, {
                 name: updatedModel.name,
                 endpoint: updatedModel.endpoint,
@@ -138,14 +138,13 @@ export default function LLMModelsPanel() {
                 framework: updatedModel.framework,
                 enabled: updatedModel.enabled,
                 status: updatedModel.status,
-                apiKey: apiKey,  // null이면 빈 문자열로 처리
-                token: token,    // null이면 빈 문자열로 처리
+                apiKey: apiKey,
+                token: token,
             })
 
 
             console.log("Response:", response.data)
 
-            // 모델 목록을 새로 고침
             loadModels()
             notify(`모델이 ${enabled ? '활성화' : '비활성화'}되었습니다.`, 'success')
         
@@ -172,51 +171,100 @@ export default function LLMModelsPanel() {
             <div className="text-sm text-white/60">로딩 중…</div>
         ) : (
             <div className="space-y-2">
-                {models.map((model) => (
-                    <div key={model.id} className="bg-white/5 p-2 rounded-lg">
-                        <div className="flex justify-between items-start mb-1">
-                            <div className="flex items-start gap-2">
-                                <Puzzle className="w-3.5 h-3.5 text-white/40" />
-                                <div className="flex flex-col">
-                                    <div className="flex items-baseline gap-1">
-                                        <span className="text-white text-[12px] font-medium">{model.name}</span>
-                                        <span className="text-white/50 text-[8px]">{model.type === '' ? '' : (model.type)}</span>
-                                    </div>
-                                    <span className="text-white/40 text-[8px] truncate">{model.endpoint}</span>
-                                </div>
-                            </div>
-                            <button
-                                className="text-white/40 hover:text-red-400"
-                                onClick={() => deleteModel(model.id)}
-                            >
-                                <Trash2 className="w-3 h-3" />
-                            </button>
-                        </div>
+                {models.map((model) => {
+                    const isExpanded = expandedModelId === model.id
 
-                        <div className="flex items-center gap-2 mt-2 mb-1 ml-1">
-                            <div 
-                                className="w-6 h-3.5 bg-white/20 rounded-full relative cursor-pointer"
-                                onClick={() => toggleModelStatus(model.id, !model.enabled)}
-                            >   
-                                <div className={clsx(
-                                    'w-2.5 h-2.5 rounded-full absolute top-0.5 transition-all',
-                                    model.enabled ? 'left-2 bg-indigo-400' : 'left-0.5 bg-white/40'
-                                )} />
-                            </div>
-                            
-                            {model.status === 'active' ? (
-                                <Wifi className="w-3 h-3 text-green-400" />
-                            ) : (
-                                <WifiOff className="w-3 h-3 text-red-400" />
+                    return (
+                        <div
+                            key={model.id}
+                            className={clsx(
+                                'bg-white/5 p-2 rounded-lg cursor-pointer transition-all',
+                                model.id === activeModelId ? 'border border-indigo-400' : 'border border-transparent'
                             )}
-                            <p
-                                className={`text-[10px] font-medium ${model.status === 'active' ? 'text-green-400' : 'text-red-400'}`}
-                            >
-                                {model.status === 'active' ? 'Online' : 'Offline'}
-                            </p>
+                            onClick={async () => {
+                                setActiveModel(model.id)
+                                try {
+                                    const res = await axios.get(`http://localhost:8500/mcp/llm/model/${model.id}/params`)
+                                    updateConfig(model.id, {
+                                        name: model.name,
+                                        ...res.data
+                                    })
+                                } catch (err) {
+                                    console.error('Integrations 불러오기 실패:', err)
+                                    notify('모델의 연결 서버 정보를 불러오지 못했습니다.', 'error')
+                                }
+                            }}
+                        >
+                            <div className="flex justify-between items-start mb-1">
+                                <div className="flex items-start gap-2">
+                                    <Puzzle className="w-3.5 h-3.5 text-white/40" />
+                                    <div className="flex flex-col">
+                                        <div className="flex items-baseline gap-1">
+                                            <span className="text-white text-[12px] font-medium">{model.name}</span>
+                                            <span className="text-white/50 text-[8px]">{model.type === '' ? '' : (model.type)}</span>
+                                        </div>
+                                        <span className="text-white/40 text-[8px] truncate">{model.endpoint}</span>
+                                    </div>
+                                </div>
+                                <button
+                                    className="text-white/40 hover:text-red-400"
+                                    onClick={() => deleteModel(model.id)}
+                                >
+                                    <Trash2 className="w-3 h-3" />
+                                </button>
+                            </div>
+
+                            <div className="flex items-center gap-2 mt-2 mb-1 ml-1">
+                                <div 
+                                    className="w-6 h-3.5 bg-white/20 rounded-full relative cursor-pointer"
+                                    onClick={() => toggleModelStatus(model.id, !model.enabled)}
+                                >   
+                                    <div className={clsx(
+                                        'w-2.5 h-2.5 rounded-full absolute top-0.5 transition-all',
+                                        model.enabled ? 'left-2 bg-indigo-400' : 'left-0.5 bg-white/40'
+                                    )} />
+                                </div>
+                                
+                                {model.status === 'active' ? (
+                                    <Wifi className="w-3 h-3 text-green-400" />
+                                ) : (
+                                    <WifiOff className="w-3 h-3 text-red-400" />
+                                )}
+                                <p
+                                    className={`text-[10px] font-medium ${model.status === 'active' ? 'text-green-400' : 'text-red-400'}`}
+                                >
+                                    {model.status === 'active' ? 'Online' : 'Offline'}
+                                </p>
+                            </div>
+                            <div className="text-right mt-1">
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation
+                                        setExpandedModelId(isExpanded ? null : model.id)
+                                        }
+                                    }
+                                    className="text-[10px] text-indigo-300 hover:text-indigo-400"
+                                >
+                                    {isExpanded ? '▲ 접기' : '▼ 상세 보기'}
+                                </button>
+                            </div>
+
+                            <AnimatePresence>
+                                {isExpanded && (
+                                    <motion.div
+                                        className='overflow-hidden mt-2'
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: 'auto', opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                    >
+                                        <LLMModelDetail modelId={model.id} />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
-                    </div>
-                ))}
+                    )   
+                })}
             </div>
         )}
 

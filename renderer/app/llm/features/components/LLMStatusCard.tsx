@@ -11,22 +11,25 @@ import {
     Server,
 } from 'lucide-react'
 
+import { useMCPStore } from '@/app/llm/features/store/useMCPStore'
 import { useLLMSettingsStore } from '@/app/llm/features/store/llmSettingsStore'
-import useMemoryStore from '@/app/llm/features/store/useMemoryStore'
-import useSamplingStore from '@/app/llm/features/store/useSamplingStore'
 
 export default function LLMStatusCard() {
-    const maxTokens = useMemoryStore(state => state.maxTokens)
+    const config = useMCPStore(s => s.getCurrentConfig())
+    const memory = config?.memory
+    const sampling = config?.sampling
 
-    const temperature = useSamplingStore(state => state.temperature)
-    const topK = useSamplingStore(state => state.topK)
-    const topP = useSamplingStore(state => state.topP)
-    const repetitionPenalty = useSamplingStore(state => state.repetitionPenalty)
+    const maxTokens = memory?.maxTokens ?? '-'
+    const temperature = sampling?.temperature ?? '-'
+    const topK = sampling?.topK ?? '-'
+    const topP = sampling?.topP ?? '-'
+    const repetitionPenalty = sampling?.repetitionPenalty ?? '-'
+
+    const modelName = config ? (config.name ?? '선택된 모델') : '모델을 선택해 주세요'
 
     const {
-        modelName,
-        responseTime,
-        device,
+        responseTime = '-',
+        device = '-'
     } = useLLMSettingsStore()
 
     return (

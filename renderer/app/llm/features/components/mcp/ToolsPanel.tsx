@@ -24,7 +24,7 @@ import {
     updateTool,
     deleteTool,
 } from '@/app/llm/services/toolsAPI'
-
+import { useMCPStore } from '@/app/llm/features/store/useMCPStore'
 import { useNotificationStore } from '@/app/store/useNotificationStore'
 
 interface Tool {
@@ -47,12 +47,29 @@ export default function ToolsPanel() {
         status: 'active',
         enabled: true
     })
+    const activeModelId = useMCPStore(s => s.activeModelId)
+    const configMap = useMCPStore(s => s.configMap)
+    const updateConfig = useMCPStore(s => s.updateConfig)
+    const linkedToolIds = activeModelId ? configMap[activeModelId]?.linkedToolIds ?? [] : []
 
     const notify = useNotificationStore((s) => s.show)
 
     useEffect(() => {
         fetchTools().then(data => setTools(data))
     }, [])
+
+    useEffect(() => {
+        if (!activeModelId) return
+        axios.get(`http://localhost:8500/mcp/llm/model/${activeModelId}/tools`)
+            .then(res => {
+                const ids = res.data.map((t: any) => t.tool_id)
+                updateConfig(activeModelId, { linkedToolIds: ids })
+            })
+            .catch(err => {
+                console.error('연동된 도구 불러오기 실패:', err)
+                notify('연동된 도구 목록을 불러오는 중 오류 발생', 'error')
+            })
+    }, [activeModelId])
 
     const handleFormChange = (key: keyof Tool, value: any) =>
         setForm(prev => ({ ...prev, [key]: value }))
@@ -136,6 +153,38 @@ export default function ToolsPanel() {
         setShowEditModal(true)
     }
 
+    const handleToggleToolLink = async (toolId: number) => {
+        if (!activeModelId) return notify('모델을 먼저 선택해주세요.', 'error')
+
+        const updated = linkedToolIds.includes(toolId)
+            ? linkedToolIds.filter(id => id !== toolId)
+            : [...linkedToolIds, toolId]
+
+        updateConfig(activeModelId, { linkedToolIds: updated })
+
+        try {
+            await axios.patch(
+                `http://localhost:8500/mcp/llm/model/${activeModelId}/tools`,
+                { tool_ids: updated }
+            )
+
+            const paramRes = await axios.get(
+                `http://localhost:8500/mcp/llm/model/${activeModelId}/params`
+            )
+            const currentParams = paramRes.data || {}
+
+            await axios.patch(
+                `http://localhost:8500/mcp/llm/model/${activeModelId}/params`,
+                { ...currentParams, tools: updated }
+            )
+
+            notify('도구 연동 상태가 업데이트되었습니다.', 'success')
+        } catch (err) {
+            console.error('도구 연동 업데이트 실패:', err)
+            notify('도구 연동 상태 저장 실패', 'error')
+        }
+    }
+
     const executeTool = async (tool: Tool) => {
         if (!tool.enabled) {
             notify('도구가 비활성화되어 있습니다.', 'error')
@@ -212,6 +261,17 @@ export default function ToolsPanel() {
                             <span className="text-white/40 text-[10px]">({tool.type})</span>
                         </div>
                         <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => handleToggleToolLink(tool.id!)}
+                                className={clsx(
+                                    'px-2 py-0.5 rounded-full text-[10px] border transition',
+                                    linkedToolIds.includes(tool.id!)
+                                        ? 'bg-indigo-500 text-white border-indigo-400'
+                                        : 'bg-white/10 text-white/40 border-white/20 hover:bg-white/20'
+                                )}
+                            >
+                                {linkedToolIds.includes(tool.id!) ? '연결됨' : '미연결'}
+                            </button>
                             <button
                                 className="text-white/40 hover:text-white/70"
                                 onClick={() => executeTool(tool)}

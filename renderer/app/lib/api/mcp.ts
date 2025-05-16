@@ -19,3 +19,6 @@ export const deleteServer = (alias: string) =>
 
 export const getServerStatus = (alias: string) =>
     axios.get<Partial<ServerEntry>>(`${MCP_BASE}/servers/${alias}/status`)
+
+export const getModelIntegrations = (modelId: string) =>
+    axios.get<{ integrations: string[] }>(`${MCP_BASE}/llm/model/${modelId}/integrations`)

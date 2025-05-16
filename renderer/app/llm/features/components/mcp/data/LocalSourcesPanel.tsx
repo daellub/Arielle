@@ -1,5 +1,6 @@
 'use client'
 
+import axios from 'axios'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
@@ -25,6 +26,7 @@ import {
     updateLocalSource,
     deleteLocalSource
 } from '@/app/llm/hooks/useMCPSource'
+import { useMCPStore } from '@/app/llm/features/store/useMCPStore'
 import { useNotificationStore } from '@/app/store/useNotificationStore'
 
 declare global {
@@ -56,17 +58,31 @@ export default function LocalSourcesPanel() {
         status: 'active',
         enabled: true
     })
+    const activeModelId = useMCPStore(s => s.activeModelId)
+    const [linkedIds, setLinkedIds] = useState<number[]>([])
 
     const notify = useNotificationStore((s) => s.show)
-
-    useEffect(() => {
-        loadSources()
-    }, [])
 
     const loadSources = async () => {
         const data = await getLocalSources()
         setSources(data)
     }
+
+    const loadLinkedIds = async () => {
+        if (!activeModelId) return
+        try {
+            const res = await axios.get(
+                `http://localhost:8500/mcp/llm/model/${activeModelId}/sources`
+            )
+            const ids = (res.data.sources || []).map((s: any) => s.source_id)
+            setLinkedIds(ids)
+        } catch (err) {
+            console.error('소스 연결 정보 로드 실패:', err)
+        }
+    }
+
+    useEffect(() => { loadSources() }, [])
+    useEffect(() => { loadLinkedIds() }, [activeModelId])
 
     const handleFormChange = (key: keyof LocalSource, value: any) =>
         setForm(prev => ({ ...prev, [key]: value || '' }))
@@ -86,68 +102,88 @@ export default function LocalSourcesPanel() {
         notify('로컬 소스를 등록했습니다', 'success')
     }
 
-    const handleDeleteSource = async (id: number | undefined) => {
-        if (id === undefined) {
-            notify('소스 ID가 잘못되었습니다.', 'error')
-            return
-        }
-
+    const handleDeleteSource = async (id?: number) => {
+        if (!id) return notify('소스 ID가 잘못되었습니다.', 'error')
         await deleteLocalSource(id)
-        loadSources()
+        await loadSources()
         notify('소스를 삭제했습니다.', 'error')
     }
 
     const toggleEnable = async (id: number | undefined) => {
-        if (id === undefined) {
-            notify('소스 ID가 잘못되었습니다.', 'error')
-            return
-        }
+        if (!id) return notify('소스 ID가 잘못되었습니다.', 'error')
+        const source = sources.find(s => s.id === id)
+        if (!source) return notify('소스를 찾을 수 없습니다.', 'error')
 
-        const source = sources.find(src => src.id === id)
-        if (!source) {
-            notify('소스를 찾을 수 없습니다.', 'error')
-            return
-        }
-
-        const updatedSource = {
+        const updated = {
             ...source,
             enabled: !source.enabled,
             status: (!source.enabled ? 'active' : 'inactive') as 'active' | 'inactive'
         }
 
-        setSources(prev =>
-            prev.map((s) =>
-                s.id === id
-                    ? updatedSource
-                    : s
-            )
-        )
-
-        await updateLocalSource(id, updatedSource)
-        
-        notify('소스 상태가 변경되었습니다.', 'info')
+        await updateLocalSource(id, updated)
+        setSources(prev => prev.map(s => s.id === id ? { ...updated } : s))
+        notify('소스 상태를 변경했습니다.', 'info')
     }
 
     const handleUpdateSource = async (id: number | undefined) => {
-        if (id === undefined) {
-            notify('소스 ID가 잘못되었습니다.', 'error')
-            return
-        }
-
-        const updatedSource = sources.find(s => s.id === id)
-        if (!updatedSource) return
-
-        await updateLocalSource(id, updatedSource)
+        if (!id) return notify('소스 ID가 잘못되었습니다.', 'error')
+        const updated = sources.find(s => s.id === id)
+        if (!updated) return
+        await updateLocalSource(id, updated)
         loadSources()
 
         notify('소스 상태를 업데이트했습니다.', 'info')
     }
 
+    const handleToggleLink = async (sourceId: number) => {
+        if (!activeModelId) return
+
+        const updated = linkedIds.includes(sourceId)
+            ? linkedIds.filter(id => id !== sourceId)
+            : [...linkedIds, sourceId]
+
+        setLinkedIds(updated)
+
+        const updatedLocalSources = sources
+        .filter(src => updated.includes(src.id!) && src.enabled)
+        .map(src => src.id!)
+
+        const sourcePayload = {
+            sources: updatedLocalSources.map(id => ({
+                source_id: id,
+                source_type: 'local'
+            }))
+        }
+
+        try {
+            await axios.patch(
+                `http://localhost:8500/mcp/llm/model/${activeModelId}/sources?source_type=local`,
+                sourcePayload
+            )
+
+            const paramRes = await axios.get(`http://localhost:8500/mcp/llm/model/${activeModelId}/params`)
+            const currentParams = paramRes.data || {}
+
+            const newParams = {
+                ...currentParams,
+                local_sources: updatedLocalSources,
+            }
+
+            await axios.patch(
+                `http://localhost:8500/mcp/llm/model/${activeModelId}/params`,
+                newParams
+            )
+
+            notify('Local 연결 정보가 업데이트되었습니다.', 'success')
+        } catch (err) {
+            console.error('연결 정보 업데이트 실패:', err)
+            notify('연결 정보를 업데이트하지 못했습니다.', 'error')
+        }
+    }
+
     const selectPath = async () => {
         const result = await window.electronAPI.openModelDialog()
-        if (result) {
-            setForm(prev => ({ ...prev, path: result }))
-        }
+        if (result) setForm(prev => ({ ...prev, path: result }))
     }
 
     return (
@@ -220,6 +256,20 @@ export default function LocalSourcesPanel() {
                         })}>
                             {src.enabled ? 'Active' : 'Inactive'}
                         </span>
+                        <button
+                            onClick={() => {
+                                console.log('clicked', src.id)
+                                handleToggleLink(src.id!)
+                            }}
+                            className={clsx(
+                                'px-2 py-0.5 rounded-full text-[10px] border transition',
+                                linkedIds.includes(src.id!)
+                                    ? 'bg-indigo-500 text-white border-indigo-400'
+                                    : 'bg-white/10 text-white/40 border-white/20 hover:bg-white/20'
+                            )}
+                        >
+                            {linkedIds.includes(src.id!) ? '연결됨' : '미연결'}
+                        </button>
                     </div>
                 </div>
             ))}

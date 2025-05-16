@@ -281,12 +281,13 @@ def save_llm_model_to_db(model_info):
         conn = get_connection()
         with conn.cursor() as cursor:
             sql = """
-                INSERT INTO llm_models (name, type, endpoint, status, enabled, apiKey, token, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO llm_models (name, type, framework, endpoint, status, enabled, apiKey, token, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             cursor.execute(sql, (
                 model_info.name,
                 model_info.type,
+                model_info.framework,
                 model_info.endpoint,
                 model_info.status,
                 model_info.enabled,
@@ -308,7 +309,7 @@ def get_llm_models_from_db():
     try:
         conn = get_connection()
         with conn.cursor(pymysql.cursors.DictCursor) as cursor:
-            sql = "SELECT id, name, type, endpoint, status, enabled, apiKey, token FROM llm_models"
+            sql = "SELECT id, name, type, framework, endpoint, status, enabled, apiKey, token FROM llm_models"
             cursor.execute(sql)
             models = cursor.fetchall()
             return models
@@ -324,23 +325,22 @@ def update_llm_model_in_db(model_id: int, model_info):
     try:
         conn = get_connection()
         with conn.cursor() as cursor:
-            sql = """
-                UPDATE llm_models
-                SET name = %s, endpoint = %s, type = %s, framework = %s, 
-                    enabled = %s, status = %s, apiKey = %s, token = %s
-                WHERE id = %s
-            """
-            cursor.execute(sql, (
-                model_info.name,
-                model_info.endpoint,
-                model_info.type,
-                model_info.framework,
-                model_info.enabled,
-                model_info.status,
-                model_info.apiKey if model_info.apiKey else None,
-                model_info.token if model_info.token else None,
-                model_id
-            ))
+            data = model_info.model_dump(exclude_unset=True)
+
+            if not data:
+                return
+            
+            fields = []
+            values = []
+            for key, value in data.items():
+                fields.append(f"{key} = %s")
+                values.append(value)
+            
+            values.append(model_id)
+            sql = f"UPDATE llm_models SET {', '.join(fields)} WHERE id = %s"
+
+            cursor.execute(sql, values)
+            
         conn.commit()
     except Exception as e:
         print(f"[ERROR] 모델 상태 업데이트 실패: {e}")
@@ -364,6 +364,14 @@ def delete_llm_model_from_db(model_id: int):
         if conn:
             conn.close()
 
+def update_llm_model_params(model_id: int, params: dict):
+    conn = get_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("UPDATE llm_models SET params = %s WHERE id = %s", (json.dumps(params), model_id))
+        conn.commit()
+    finally:
+        conn.close()
 
 # ── MCP 서버 CRUD 함수 ──────────────────────────────────────────────────────
 

@@ -24,7 +24,7 @@ export default function MCPPanel() {
     const [selected, setSelected] = useState('LLM Models')
 
     return (
-        <div className="w-[350px] h-[575px] p-4 rounded-2xl bg-[#1f1f2d]/60 backdrop-blur-md border border-white/10 shadow-sm text-white space-y-4">
+        <div className="scrollLLMArea w-[350px] max-h-[575px] p-4 overflow-y-auto rounded-2xl bg-[#1f1f2d]/60 backdrop-blur-md border border-white/10 shadow-sm text-white space-y-4">
             <div className="flex items-center gap-2 font-semibold text-white">
                 <Settings className="w-4 h-4 text-white/70" />
                 MCP 설정

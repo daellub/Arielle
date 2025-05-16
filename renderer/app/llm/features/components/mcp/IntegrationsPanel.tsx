@@ -24,6 +24,7 @@ import {
     deleteServer,
     getServerStatus
 } from '@/app/lib/api/mcp'
+import { useMCPStore } from '@/app/llm/features/store/useMCPStore'
 
 interface ServerEntry {
     name: string
@@ -47,6 +48,10 @@ interface ServerEntry {
 }
 
 export default function IntegrationsPanel() {
+    const activeModelId = useMCPStore(s => s.activeModelId)
+    const configMap = useMCPStore(s => s.configMap)
+    const integrations = activeModelId ? configMap[activeModelId]?.integrations ?? [] : []
+    const updateConfig = useMCPStore(s => s.updateConfig)
     const [servers, setServers] = useState<ServerEntry[]>([])
     const [loading, setLoading] = useState(false)
     const [showAddModal, setShowAddModal] = useState(false)
@@ -72,6 +77,30 @@ export default function IntegrationsPanel() {
         loadServers()
     }, [])
 
+    useEffect(() => {
+        if (!activeModelId || integrations.length === 0) return
+
+        const interval = setInterval(() => {
+            integrations.forEach(alias => {
+                const server = servers.find(s => s.alias === alias)
+                if (server?.enabled) refreshStatus(alias)
+            })
+        }, 900)
+
+        return () => clearInterval(interval)
+    }, [activeModelId, integrations, servers])
+
+    // useEffect(() => {
+    //     if (!activeModelId || !servers.length) return
+        
+    //     const aliases = configMap[activeModelId]?.integrations ?? []
+
+    //     aliases.forEach(alias => {
+    //         const server = servers.find(s => s.alias === alias)
+    //         if (server?.enabled) refreshStatus(alias)
+    //     })
+    // }, [activeModelId, servers])
+
     async function loadServers() {
         setLoading(true)
         try {
@@ -84,6 +113,69 @@ export default function IntegrationsPanel() {
         }
     }
 
+    async function refreshStatus(alias: string) {
+        const server = servers.find(s => s.alias === alias)
+        if (!server || !server.enabled) return
+
+        try {
+            const res = await getServerStatus(alias)
+            setServers((list) =>
+                list.map((s) =>
+                    s.alias === alias ? { ...s, ...res.data, enabled: s.enabled } : s
+                )
+            )
+        } catch (err) {
+            console.error('상태 갱신 실패:', err)
+            notify('상태 갱신에 실패했습니다.', 'error')
+        }
+    }
+
+    async function toggleEnable(alias: string, enabled: boolean) {
+        try {
+            const server = servers.find(s => s.alias === alias)
+            if (!server) return
+
+            const status: 'active' | 'inactive' = enabled ? 'active' : 'inactive'
+            const updatedServer: ServerEntry = { ...server, enabled, status }
+
+            await updateServer(alias, updatedServer)
+
+            setServers((list) =>
+                list.map((s) => s.alias === alias ? updatedServer : s)
+            )
+        } catch (err) {
+            console.error('토글 실패:', err)
+            notify('서버 활성화 토글 실패', 'error')
+        }
+    }
+
+    async function toggleAlias(alias: string) {
+        if (!activeModelId) {
+            notify('모델이 선택되지 않았습니다.', 'info')
+            return
+        }
+
+        const current = useMCPStore.getState().configMap[activeModelId]?.integrations ?? []
+        const updated = current.includes(alias)
+            ? current.filter(a => a !== alias)
+            : [...current, alias]
+
+        updateConfig(activeModelId, { integrations: updated })
+
+        const config = useMCPStore.getState().getCurrentConfig()
+        if (!config) return
+
+        try {
+            await axios.patch(
+                `http://localhost:8500/mcp/llm/model/${activeModelId}/params`,
+                config
+            )
+        } catch (err) {
+            console.error('설정 저장 실패: ', err)
+            notify('설정을 저장하는 중 오류가 발생했습니다.', 'error')
+        }
+    }
+
     async function registerServer() {
         if (!newServer.name || !newServer.endpoint || !newServer.alias) {
             notify('서버 이름, 엔드포인트, Alias는 필수입니다.', 'info')
@@ -91,22 +183,7 @@ export default function IntegrationsPanel() {
         }
 
         try {
-            await createServer({
-                name:        newServer.name!,
-                alias:       newServer.alias!,
-                description: newServer.description || '',
-                type:        newServer.type!,
-                endpoint:    newServer.endpoint!,
-                authType:    newServer.authType!,
-                tags:        newServer.tags || [],
-                timeoutMs:   newServer.timeoutMs || 30000,
-                healthCheck: newServer.healthCheck || '',
-                enabled:     newServer.enabled,
-                apiKey:      newServer.apiKey || '',
-                token:       newServer.token || '',
-                username:    newServer.username || '',
-                password:    newServer.password || ''
-            })
+            await createServer({ ...(newServer as ServerEntry) })
             notify('서버 등록 완료', 'success')
             loadServers()
             setShowAddModal(false)
@@ -117,7 +194,7 @@ export default function IntegrationsPanel() {
             })
         } catch (err) {
             console.error('서버 등록 실패:', err)
-            notify('서버 등록 실패', 'error')
+            notify('서버 등록을 실패했습니다.', 'error')
         }
     }
 
@@ -129,42 +206,7 @@ export default function IntegrationsPanel() {
             setShowAddModal(false)
         } catch (err) {
             console.error('서버 삭제 실패:', err)
-            notify('서버 삭제 실패', 'error')
-        }
-    }
-
-    async function refreshStatus(alias: string) {
-        try {
-            const res = await getServerStatus(alias)
-            setServers((list) =>
-                list.map((s) => s.alias === alias ? { ...s, ...res.data } : s)
-            )
-        } catch (err) {
-            console.error('상태 갱신 실패:', err)
-            notify('상태 갱신 실패', 'error')
-        }
-    }
-
-    async function toggleEnable(alias: string, enabled: boolean) {
-        try {
-            const server = servers.find(s => s.alias === alias)
-
-            if (server) {
-                const updatedServer = {
-                    ...server,
-                    enabled,
-                    status: enabled ? 'active' as const : 'inactive' as const,
-                }
-
-                await updateServer(alias, updatedServer)
-
-                setServers((list) =>
-                    list.map((s) => s.alias === alias ? { ...s, ...updatedServer } : s)
-                )
-            }
-        } catch (err) {
-            console.error('토글 실패:', err)
-            notify('서버 활성화 토글 실패', 'error')
+            notify('서버 삭제를 실패했습니다.', 'error')
         }
     }
 
@@ -215,23 +257,29 @@ export default function IntegrationsPanel() {
                                 </button>
                             </div>
 
-                            {/* 상태바 & latency */}
                             <div className="flex items-center gap-2 mb-2 ml-1">
-                                {srv.status === 'active'
-                                    ? <Wifi className="w-3 h-3 text-green-400" />
-                                    : <WifiOff className="w-3 h-3 text-red-400" />
-                                }
-                                <p className={clsx('text-[10px] font-medium', {
-                                    'text-green-400': srv.status === 'active',
-                                    'text-red-400':   srv.status === 'inactive'
-                                })}>
-                                    {srv.status === 'active' ? 'Online' : 'Offline'}
-                                </p>
+                                {srv.enabled ? (
+                                    srv.status === 'active' ? (
+                                        <>
+                                            <Wifi className="w-3 h-3 text-green-400" />
+                                            <p className="text-[10px] font-medium text-green-400">Online</p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <WifiOff className="w-3 h-3 text-red-400" />
+                                            <p className="text-[10px] font-medium text-red-400">Offline</p>
+                                        </>
+                                    )
+                                ) : (
+                                    <>
+                                        <WifiOff className="w-3 h-3 text-white/40" />
+                                        <p className="text-[10px] font-medium text-white/40">비활성화됨</p>
+                                    </>
+                                )}
                                 <p className="text-[10px]">↔ {srv.latency ?? '—'}ms</p>
                                 <p className="text-[10px]">⏱ {srv.timeoutMs}ms</p>
                             </div>
 
-                            {/* 툴팁, 에러, 리프레시, 토글 */}
                             <div className="flex flex-wrap items-center gap-2 text-[9px] text-white/60">
                                 {srv.healthCheck && (
                                     <Tooltip content={`Health Check: ${srv.healthCheck}`}>
@@ -259,6 +307,17 @@ export default function IntegrationsPanel() {
                                         srv.enabled ? 'left-2 bg-indigo-400' : 'left-0.5 bg-white/40'
                                     )} />
                                 </div>
+                                <button
+                                    onClick={() => toggleAlias(srv.alias)}
+                                    className={clsx(
+                                        "px-2 py-0.5 rounded-full text-[10px] border transition",
+                                        integrations.includes(srv.alias)
+                                            ? "bg-indigo-500 text-white border-indigo-400"
+                                            : "bg-white/10 text-white/40 border-white/20 hover:bg-white/20"
+                                    )}
+                                >
+                                    {integrations.includes(srv.alias) ? '연결됨' : '미연결'}
+                                </button>
                             </div>
                         </div>
                     ))}

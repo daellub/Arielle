@@ -1,6 +1,7 @@
 // app/llm/features/components/mcp/data/RemoteSourcesPanel.tsx
 'use client'
 
+import axios from 'axios'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
@@ -25,6 +26,7 @@ import {
     updateRemoteSource,
     deleteRemoteSource
 } from '@/app/llm/hooks/useMCPSource'
+import { useMCPStore } from '@/app/llm/features/store/useMCPStore'
 import { useNotificationStore } from '@/app/store/useNotificationStore'
 
 interface RemoteSource {
@@ -46,12 +48,26 @@ export default function RemoteSourcesPanel() {
         status: 'active',
         enabled: true
     })
+    const activeModelId = useMCPStore(s => s.activeModelId)
+    const [linkedIds, setLinkedIds] = useState<number[]>([])
 
     const notify = useNotificationStore((s) => s.show)
 
     useEffect(() => {
         loadSources()
     }, [])
+
+    useEffect(() => {
+        if (!activeModelId) return
+        axios.get(`http://localhost:8500/mcp/llm/model/${activeModelId}/sources`)
+            .then(res => {
+                const onlyRemote = res.data.sources.filter((s: any) => s.source_type === 'remote')
+                setLinkedIds(onlyRemote.map((s: any) => s.source_id))
+            })
+            .catch(err => {
+                console.error('Remote 연결 정보 불러오기 실패:', err)
+            })
+    }, [activeModelId])
 
     const loadSources = async () => {
         const data = await getRemoteSources()
@@ -135,6 +151,57 @@ export default function RemoteSourcesPanel() {
         notify('소스가 삭제되었습니다.', 'info')
     }
 
+    const handleToggleLink = async (sourceId: number) => {
+        if (!activeModelId) {
+            notify('먼저 모델을 선택해 주세요.', 'error')
+            return
+        }
+
+        const updated = linkedIds.includes(sourceId)
+            ? linkedIds.filter(id => id !== sourceId)
+            : [...linkedIds, sourceId]
+
+        setLinkedIds(updated)
+
+        const updatedRemoteSources = sources
+            .filter(src => updated.includes(src.id!) && src.enabled)
+            .map(src => src.id!)
+
+        const payload = {
+            sources: updatedRemoteSources.map(id => ({
+                source_id: id,
+                source_type: 'remote'
+            }))
+        }
+
+        try {
+            await axios.patch(
+                `http://localhost:8500/mcp/llm/model/${activeModelId}/sources?source_type=remote`,
+                payload
+            )
+            
+            const currentParamsRes = await axios.get(
+                `http://localhost:8500/mcp/llm/model/${activeModelId}/params`
+            )
+            const currentParams = currentParamsRes.data || {}
+
+            const newParams = {
+                ...currentParams,
+                remote_sources: updatedRemoteSources
+            }
+
+            await axios.patch(
+                `http://localhost:8500/mcp/llm/model/${activeModelId}/params`,
+                newParams
+            )
+
+            notify('Remote 연결 정보가 업데이트되었습니다.', 'success')
+        } catch (err) {
+            console.error('연결 정보 업데이트 실패:', err)
+            notify('연결 정보를 업데이트하지 못했습니다.', 'error')
+        }
+    }
+
     return (
         <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -203,6 +270,17 @@ export default function RemoteSourcesPanel() {
                         })}>
                             {src.status === 'active' ? 'Active' : 'Inactive'}
                         </span>
+                        <button
+                            onClick={() => handleToggleLink(src.id!)}
+                            className={clsx(
+                                'px-2 py-0.5 rounded-full text-[10px] border transition',
+                                linkedIds.includes(src.id!)
+                                    ? 'bg-indigo-500 text-white border-indigo-400'
+                                    : 'bg-white/10 text-white/40 border-white/20 hover:bg-white/20'
+                            )}
+                        >
+                            {linkedIds.includes(src.id!) ? '연결됨' : '미연결'}
+                        </button>
                     </div>
                 </div>
             ))}
