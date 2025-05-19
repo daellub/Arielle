@@ -4,3 +4,6 @@ whisper-medium-int8
 .env
 MCP_Test
 renderer/app.zip
+models
+test.py
+*.wav

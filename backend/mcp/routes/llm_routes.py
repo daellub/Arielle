@@ -8,6 +8,7 @@ router = APIRouter()
 
 class LLMModelIn(BaseModel):
     name: str
+    model_key: str
     endpoint: str
     type: str
     framework: str
@@ -28,9 +29,11 @@ class LLMModelIn(BaseModel):
     
 class LLMModelOut(LLMModelIn):
     id: int
+    model_key: Optional[str]
 
 class LLMModelPatch(BaseModel):
     name: Optional[str] = None
+    model_key: Optional[str] = None
     endpoint: Optional[str] = None
     type: Optional[str] = None
     framework: Optional[str] = None

@@ -18,6 +18,8 @@ from backend.mcp.routes.sampling_routes import router as sampling_router
 from backend.mcp.routes.security_routes import router as security_router
 from backend.mcp.routes.log_routes import router as log_router
 
+from backend.mcp.routes.llm_load_routes import router as llm_load_router
+
 app = FastAPI(title="Arielle MCP Control Server")
 app.add_middleware(
     CORSMiddleware,
@@ -39,3 +41,5 @@ app.include_router(memory_router, prefix="/mcp", tags=["Memory"])
 app.include_router(sampling_router, prefix="/mcp", tags=["Sampling"])
 app.include_router(security_router, prefix="/mcp", tags=["Security"])
 app.include_router(log_router, prefix="/mcp", tags=["Logs"])
+
+app.include_router(llm_load_router, prefix="/mcp", tags=["LLM Load"])

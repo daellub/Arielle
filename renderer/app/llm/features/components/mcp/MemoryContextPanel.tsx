@@ -24,9 +24,9 @@ type Strategy = typeof strategies[number]
 
 const strategyDescriptions: Record<Strategy, string> = {
     None: '메모리 저장 기능을 사용하지 않습니다.',
-    Window: '최대 n개의 대화 내용만 기억하여 사용합니다.',
+    Window: '최대 16개의 대화 내용만 기억하여 사용합니다.',
     Summary: '대화 내용을 요약하여 기억합니다.',
-    Hybrid: '대화 내용을 요약하고, n개의 대화 내용도 기억합니다.'
+    Hybrid: '대화 내용을 요약하고, 16개의 대화 내용도 기억합니다.'
 }
 
 export default function MemoryContextPanel() {

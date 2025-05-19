@@ -11,6 +11,8 @@ interface MemoryPrompt {
 
 interface MCPConfig {
     name?: string
+    model_key?: string
+    enabled: boolean
     integrations: string[]
     local_sources: number[]
     remote_sources: number[]
@@ -48,12 +50,42 @@ interface MCPStore {
     getCurrentConfig: () => MCPConfig | null
 }
 
+function createDefaultConfig(): MCPConfig {
+    return {
+        name: '',
+        model_key: '',
+        enabled: false,
+        integrations: [],
+        local_sources: [],
+        remote_sources: [],
+        prompt: '',
+        linkedPromptIds: [],
+        setLinkedPromptIds: () => {},
+        linkedToolIds: [],
+        setLinkedToolIds: () => {},
+        memory: {
+            strategy: 'Window',
+            maxTokens: 2048,
+            includeHistory: true,
+            saveMemory: true,
+            contextPrompts: [],
+        },
+        sampling: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.9,
+            repetitionPenalty: 1.2,
+        },
+        tools: [],
+    }
+}
+
 export const useMCPStore = create<MCPStore>((set, get) => ({
     configMap: {},
     activeModelId: null,
     setActiveModel: (modelId) => set({ activeModelId: modelId }),
     updateConfig: (modelId, update) => set((state) => {
-        const existing = state.configMap[modelId] || {}
+        const existing = state.configMap[modelId] || createDefaultConfig()
         return {
             configMap: {
                 ...state.configMap,

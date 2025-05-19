@@ -13,6 +13,8 @@ import MCPPanel from '@/app/llm/features/components/MCPPanel'
 import { useLLMStore } from '@/app/llm/features/store/useLLMStore'
 import LLMDebugInputPanel from '../llm/features/components/LLMDebugInputPanel'
 
+import styles from './LLMPage.module.css'
+
 interface Sparkle {
     top: string
     left: string
@@ -137,6 +139,7 @@ export default function LLMPage() {
                                     <ChatBubbleList language={langTab === '원어' ? 'en' : 'ko'} />
                                 </motion.div>
                             </AnimatePresence>
+                            <LLMDebugInputPanel />
                         </div>
 
                         <MCPPanel />

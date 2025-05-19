@@ -13,7 +13,6 @@ def get_connection():
     return pymysql.connect(**DB_CONFIG)
 
 def _get_logo_by_model_name(model_name: str):
-    """ 모델 이름을 기반으로 자동으로 로고 설정 """
     logo_map = {
         "OpenAI": "OpenAI.svg",
         "PyTorch": "PyTorch.svg",
@@ -21,7 +20,7 @@ def _get_logo_by_model_name(model_name: str):
         "TensorFlow": "Tensorflow.svg",
         "Google": "Transformer.svg"
     }
-    return f"/static/icons/{logo_map.get(model_name, 'default.svg')}"  # 백엔드 이미지 URL 반환
+    return f"/static/icons/{logo_map.get(model_name, 'default.svg')}"
 
 # ── ASR 서버 함수 ──────────────────────────────────────────────────────
 
@@ -281,11 +280,12 @@ def save_llm_model_to_db(model_info):
         conn = get_connection()
         with conn.cursor() as cursor:
             sql = """
-                INSERT INTO llm_models (name, type, framework, endpoint, status, enabled, apiKey, token, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO llm_models (name, model_key, type, framework, endpoint, status, enabled, apiKey, token, created_at)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             cursor.execute(sql, (
                 model_info.name,
+                model_info.model_key,
                 model_info.type,
                 model_info.framework,
                 model_info.endpoint,
@@ -309,13 +309,32 @@ def get_llm_models_from_db():
     try:
         conn = get_connection()
         with conn.cursor(pymysql.cursors.DictCursor) as cursor:
-            sql = "SELECT id, name, type, framework, endpoint, status, enabled, apiKey, token FROM llm_models"
+            sql = "SELECT id, model_key, name, type, framework, endpoint, status, enabled, apiKey, token FROM llm_models"
             cursor.execute(sql)
             models = cursor.fetchall()
             return models
     except Exception as e:
         print("\033[91m" + f"[ERROR] LLM 모델 조회 실패: {e}" + "\033[0m")
         return []
+    finally:
+        if conn:
+            conn.close()
+
+def get_llm_model_by_id(model_id: int) -> Optional[dict]:
+    conn = None
+    try:
+        conn = get_connection()
+        with conn.cursor(pymysql.cursors.DictCursor) as cursor:
+            sql = """
+                SELECT id, name, model_key, endpoint, enabled, framework, type, params
+                FROM llm_models
+                WHERE id = %s
+            """
+            cursor.execute(sql, (model_id,))
+            return cursor.fetchone()
+    except Exception as e:
+        print(f"[ERROR] LLM 모델 단일 조회 실패: {e}")
+        return None
     finally:
         if conn:
             conn.close()
@@ -473,5 +492,34 @@ def insert_mcp_log(type: str, source: str, message: str):
                 VALUES (%s, %s, %s)
             ''', (type, source, message))
         conn.commit()
+    finally:
+        conn.close()
+
+# ── MCP 파라미터 ──────────────────────────────────────────────────────
+def get_prompt_templates_by_ids(ids: list[int]) -> list[str]:
+    from ..utils.prompt_utils import apply_variables
+    conn = get_connection()
+    try:
+        with conn.cursor(pymysql.cursors.DictCursor) as cursor:
+            if not ids:
+                return []
+            format_strings = ','.join(['%s'] * len(ids))
+            cursor.execute(f"""
+                SELECT template, variables FROM mcp_prompts
+                WHERE id IN ({format_strings}) AND enabled = 1
+            """, ids)
+            rows = cursor.fetchall()
+            prompts = []
+            for row in rows:
+                template = row['template']
+                vars = json.loads(row['variables'] or "[]")
+
+                values = {
+                    "time": datetime.now().strftime("%H:%M"),
+                    "user_name": "다엘",
+                    "date": datetime.now().strftime("%Y-%m-%d")
+                }
+                prompts.append(apply_variables(template, vars, values))
+            return prompts
     finally:
         conn.close()

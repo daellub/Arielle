@@ -208,16 +208,15 @@ export default function PromptsPanel() {
                 <div
                     key={i}
                     className={`p-2 rounded-lg hover:bg-white/10 transition cursor-pointer 
-                                ${p.enabled ? 'border-[0.1px] border-green-300' : ''} 
                                 shadow-md`}
                     onClick={() => setSelectedPrompt(p)}
                 >
-                    <div className="flex justify-between items-center mb-1">
-                        <div className="flex items-center gap-2">
-                            <FileText className="w-4 h-4 text-white/40" />
-                            <span className="text-white font-medium">{p.name}</span>
+                    <div className="flex justify-between items-start mb-1">
+                        <div className="flex items-start gap-2 flex-1 min-w-0">
+                            <FileText className="w-4 h-4 text-white/40 mt-[2px]" />
+                            <span className="text-white font-medium break-words">{p.name}</span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 self-start">
                             <button
                                 className={clsx(
                                     'px-2 py-0.5 rounded-full text-[10px] border transition',
@@ -395,7 +394,7 @@ export default function PromptsPanel() {
                     onClick={() => setShowEditModal(false)} // 모달 외부 클릭 시 닫기
                 >
                     <div
-                        className="bg-[#2c2c3d] rounded-lg p-6 space-y-4 w-full max-w-md max-h-[90vh] overflow-auto"
+                        className="scrollLLMArea bg-[#2c2c3d] rounded-lg p-6 space-y-4 w-full max-w-md max-h-[90vh] overflow-auto"
                         onClick={e => e.stopPropagation()}  // 모달 안에서 클릭해도 모달이 닫히지 않게
                     >
                         <div className="flex justify-between items-center">

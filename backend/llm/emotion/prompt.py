@@ -15,7 +15,7 @@ The tone should reflect how it is being said, not just what is said.
 
 ---
 
-💡 EMOTION EXAMPLES (use only from this list):
+EMOTION EXAMPLES (use only from this list):
 - joyful
 - hopeful
 - melancholic
@@ -36,12 +36,12 @@ The tone should reflect how it is being said, not just what is said.
 - embarrassed
 - contemplative
 
-❗ Do not invent new labels or use unrelated terms.  
-❗ Do not return generic terms like "emotion", "adjective", or "none".
+Do not invent new labels or use unrelated terms.  
+Do not return generic terms like "emotion", "adjective", or "none".
 
 ---
 
-💬 TONE EXAMPLES (choose **only one** from this list):
+TONE EXAMPLES (choose **only one** from this list):
 - formal
 - casual
 - poetic
@@ -61,10 +61,10 @@ The tone should reflect how it is being said, not just what is said.
 - apologetic
 - teasing
 
-❗ You MUST choose exactly one tone from the list above.  
-❗ Do not combine multiple tones (e.g., “gentle and affectionate” is not allowed).  
-❗ Do not use unrelated or invented tone words.  
-❗ Do not return generic labels like "tone", "style", or "none".
+You MUST choose exactly one tone from the list above.  
+Do not combine multiple tones (e.g., “gentle and affectionate” is not allowed).  
+Do not use unrelated or invented tone words.  
+Do not return generic labels like "tone", "style", or "none".
 
 ---
 

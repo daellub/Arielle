@@ -7,6 +7,7 @@ import HomePage from './pages/HomePage'
 import ASRPage from './pages/ASRPage'
 import TranslatePage from './pages/TranslatePage'
 import LLMPage from './pages/LLMPage'
+import TTSPage from './pages/TTSPage'
 
 import { motion, AnimatePresence } from 'framer-motion'
 import { useEffect, useRef } from 'react'
@@ -48,6 +49,7 @@ export default function AppContainer() {
                         { key: 'ASR', Component: ASRPage },
                         { key: 'Translate', Component: TranslatePage },
                         { key: 'LLM', Component: LLMPage },
+                        { key: 'TTS', Component: TTSPage },
                     ].map(({ key, Component }) => (
                         <motion.div
                             key={key}

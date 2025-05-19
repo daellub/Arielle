@@ -21,6 +21,7 @@ import LLMModelDetail from './LLMModelDetail'
 interface LLMModel {
     id: string
     name: string
+    model_key: string
     endpoint: string
     type: string
     framework: string
@@ -34,6 +35,7 @@ export default function LLMModelsPanel() {
     const [models, setModels] = useState<LLMModel[]>([])
     const [newModel, setNewModel] = useState({
         name: '',
+        model_key: '',
         endpoint: '',
         type: 'Chatbot',
         framework: 'LLaMA',
@@ -48,6 +50,7 @@ export default function LLMModelsPanel() {
     const activeModelId = useMCPStore(s => s.activeModelId)
     const setActiveModel = useMCPStore(s => s.setActiveModel)
     const updateConfig = useMCPStore(s => s.updateConfig)
+    const getConfig = useMCPStore(s => s.configMap)
     const [expandedModelId, setExpandedModelId] = useState<string | null>(null)
 
     useEffect(() => {
@@ -58,7 +61,17 @@ export default function LLMModelsPanel() {
         setLoading(true)
         try {
             const response = await axios.get('http://localhost:8500/mcp/llm/model')
-            setModels(response.data.models)
+            const models: LLMModel[] = response.data.models
+
+            models.forEach(model => {
+                updateConfig(model.id, {
+                    name: model.name,
+                    model_key: model.model_key,
+                    enabled: model.enabled,
+                })
+            })
+            
+            setModels(models)
         } catch (error) {
             console.error('Error loading models:', error)
             notify('MCP 서버에서 모델을 불러오는 중 오류가 발생했습니다.', 'error')
@@ -80,6 +93,7 @@ export default function LLMModelsPanel() {
             setShowAddModal(false)
             setNewModel({
                 name: '',
+                model_key: '',
                 endpoint: '',
                 type: 'Chatbot',
                 framework: 'LLaMA',
@@ -118,33 +132,21 @@ export default function LLMModelsPanel() {
                 return
             }
 
-            console.log("Updated Model:", updatedModel)
-
-            if (!updatedModel.name || !updatedModel.endpoint || !updatedModel.type || !updatedModel.framework) {
-                notify('모델의 필수 항목을 모두 입력해주세요.', 'info')
-                return
-            }
-
             updatedModel.enabled = enabled
             updatedModel.status = enabled ? 'active' : 'inactive'
 
-            const apiKey = updatedModel.apiKey || ''
-            const token = updatedModel.token || ''
-
-            const response = await axios.patch(`http://localhost:8500/mcp/llm/model/${modelId}`, {
+            await axios.patch(`http://localhost:8500/mcp/llm/model/${modelId}`, {
                 name: updatedModel.name,
                 endpoint: updatedModel.endpoint,
                 type: updatedModel.type,
                 framework: updatedModel.framework,
                 enabled: updatedModel.enabled,
                 status: updatedModel.status,
-                apiKey: apiKey,
-                token: token,
+                apiKey: updatedModel.apiKey || '',
+                token: updatedModel.token || '',
             })
-
-
-            console.log("Response:", response.data)
-
+            
+            updateConfig(modelId, { enabled })
             loadModels()
             notify(`모델이 ${enabled ? '활성화' : '비활성화'}되었습니다.`, 'success')
         
@@ -173,6 +175,7 @@ export default function LLMModelsPanel() {
             <div className="space-y-2">
                 {models.map((model) => {
                     const isExpanded = expandedModelId === model.id
+                    const config = getConfig[model.id]
 
                     return (
                         <div
@@ -187,6 +190,8 @@ export default function LLMModelsPanel() {
                                     const res = await axios.get(`http://localhost:8500/mcp/llm/model/${model.id}/params`)
                                     updateConfig(model.id, {
                                         name: model.name,
+                                        model_key: model.model_key,
+                                        enabled: model.enabled,
                                         ...res.data
                                     })
                                 } catch (err) {
@@ -217,7 +222,7 @@ export default function LLMModelsPanel() {
                             <div className="flex items-center gap-2 mt-2 mb-1 ml-1">
                                 <div 
                                     className="w-6 h-3.5 bg-white/20 rounded-full relative cursor-pointer"
-                                    onClick={() => toggleModelStatus(model.id, !model.enabled)}
+                                    onClick={() => toggleModelStatus(model.id, !config?.enabled)}
                                 >   
                                     <div className={clsx(
                                         'w-2.5 h-2.5 rounded-full absolute top-0.5 transition-all',
@@ -230,9 +235,10 @@ export default function LLMModelsPanel() {
                                 ) : (
                                     <WifiOff className="w-3 h-3 text-red-400" />
                                 )}
-                                <p
-                                    className={`text-[10px] font-medium ${model.status === 'active' ? 'text-green-400' : 'text-red-400'}`}
-                                >
+                                <p className={clsx(
+                                    'text-[10px] font-medium',
+                                    model.status === 'active' ? 'text-green-400' : 'text-red-400'
+                                )}>
                                     {model.status === 'active' ? 'Online' : 'Offline'}
                                 </p>
                             </div>
@@ -292,6 +298,12 @@ export default function LLMModelsPanel() {
                         placeholder="모델 이름"
                         value={newModel.name}
                         onChange={(e) => setNewModel({ ...newModel, name: e.target.value })}
+                    />
+                    <input
+                        className="w-full p-2 rounded bg-white/10 text-white text-sm"
+                        placeholder="모델 키 (예: arielle-q6)"
+                        value={newModel.model_key}
+                        onChange={(e) => setNewModel({ ...newModel, model_key: e.target.value })}
                     />
                     <input
                         className="w-full p-2 rounded bg-white/10 text-white text-sm"

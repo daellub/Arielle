@@ -76,8 +76,8 @@ export default function TranslatePanel({ asrResult, onTranslate, items }: Props)
 
         const item: TranslationHistoryItem = {
             id: Date.now().toString(),
-            original: content,                  // LLM 영어 응답
-            translated: translated,             // 일본어 번역
+            original: content,
+            translated: translated,
             date: new Date().toISOString(),
             targetLang: 'ja',
             source: 'LLM',
@@ -147,7 +147,9 @@ export default function TranslatePanel({ asrResult, onTranslate, items }: Props)
                     name: 'You',
                     isFinal: true
                 })
+                console.log('[LLM 전송 시작]', userMsgEn)
                 send(userMsgEn)
+                console.log('[LLM 전송 완료]')
                 setLastSourceType('Direct')
             }
         } catch (err) {

@@ -1,5 +1,7 @@
 # backend/mcp/routes/tool_routes.py
+import os
 from fastapi import APIRouter, HTTPException, Query
+import httpx
 from pydantic import BaseModel
 from typing import List
 from backend.db.database import get_connection, insert_mcp_log
@@ -126,3 +128,29 @@ async def execute_powershell_script(command: str = Query(..., description="Power
         return {"error": f"Execution failed: {e.stderr}"}
     except Exception as e:
         return {"error": f"Unexpected error: {str(e)}"}
+    
+@router.get("/tools/search")
+async def search_google(query: str = Query(..., description="검색어")):
+    GOOGLE_API_KEY = os.getenv("GOOGLE_SEARCHENGINE_KEY")
+    GOOGLE_CX = os.getenv("GOOGLE_SEARCHENGINE_ID")
+
+    url = "https://www.googleapis.com/customsearch/v1"
+    params = {
+        "key": GOOGLE_API_KEY,
+        "cx": GOOGLE_CX,
+        "q": query
+    }
+
+    async with httpx.AsyncClient() as client:
+        res = await client.get(url, params=params)
+        data = res.json()
+
+    if "items" not in data or len(data["items"]) == 0:
+        return {"error": "검색 결과 없음 또는 API 오류", "raw": data}
+    
+    first = data["items"][0]
+    return {
+        "title": first.get("title"),
+        "summary": first.get("snippet"),
+        "link": first.get("link"),
+    }

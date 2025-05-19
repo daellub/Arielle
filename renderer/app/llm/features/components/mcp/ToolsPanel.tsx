@@ -173,9 +173,14 @@ export default function ToolsPanel() {
             )
             const currentParams = paramRes.data || {}
 
+            const nextParams = {
+                ...currentParams,
+                tools: updated
+            }
+
             await axios.patch(
                 `http://localhost:8500/mcp/llm/model/${activeModelId}/params`,
-                { ...currentParams, tools: updated }
+                nextParams
             )
 
             notify('도구 연동 상태가 업데이트되었습니다.', 'success')
@@ -254,13 +259,13 @@ export default function ToolsPanel() {
                     key={i}
                     className="p-2 rounded-md bg-white/5 hover:bg-white/10 transition"
                 >
-                    <div className="flex justify-between items-center mb-1">
-                        <div className="flex items-center gap-2">
+                    <div className="flex justify-between items-start mb-1">
+                        <div className="flex items-center gap-1 flex-1 min-w-0">
                             <Wrench className="w-4 h-4 text-white/40" />
                             <span className="text-white font-medium">{tool.name}</span>
                             <span className="text-white/40 text-[10px]">({tool.type})</span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 self-start">
                             <button
                                 onClick={() => handleToggleToolLink(tool.id!)}
                                 className={clsx(
