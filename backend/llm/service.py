@@ -1,5 +1,6 @@
 # backend/llm/service.py
 
+import os
 import requests
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
@@ -283,14 +284,18 @@ async def websocket_chat(ws: WebSocket):
                 from backend.utils.source_loader import load_text_from_local_sources
                 texts = load_text_from_local_sources(local_source_ids)
 
+                print(f"[📁 로컬 소스 ID 목록]: {local_source_ids}")
                 print(f"[📁 로컬 소스 참고 문서 수]: {len(texts)}개")
+
                 for idx, text in enumerate(texts):
-                    print(f"[📄 {idx+1}번째 문서 요약]:\n{text[:200]}...\n")
+                    header = text.split('\n')[0] if '\n' in text else text[:50]
+                    print(f"[📄 문서 {idx+1}] 헤더: {header}")
 
                 for text in texts:
+                    role_intro = "This is character information:" if " is a " in text else "This is background knowledge:"
                     context.append({
                         "role": "system",
-                        "content": f"This is cultural background information about elves: \n{text[:500]}"
+                        "content": f"{role_intro}\n{text[:500]}"
                     })
 
             if tool_result:
@@ -320,7 +325,8 @@ async def websocket_chat(ws: WebSocket):
                 **opts
             }
 
-            # print(f"[▶️ MCP 기반 요청 payload] {json.dumps(payload, indent=2)}")
+            if os.getenv("DEBUG_LLM_PAYLOAD") == "1":
+                print(f"[▶️ 요청 payload]\n{json.dumps(payload, indent=2)}")
 
             async with httpx.AsyncClient(timeout=None) as client:
                 async with client.stream("POST", f"{endpoint}/v1/chat/completions", json=payload) as res:
