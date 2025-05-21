@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useLLMStore } from '@/app/llm/features/store/useLLMStore'
 import { useMCPStore } from '@/app/llm/features/store/useMCPStore'
 import { useNotificationStore } from '@/app/store/useNotificationStore'
+import { useIntegrationExecutor } from './useIntegrationExecutor'
 
 export function useLLMStream() {
     const wsRef = useRef<WebSocket | null>(null)
@@ -12,6 +13,8 @@ export function useLLMStream() {
     const addStreamingChunk = useLLMStore((s) => s.addStreamingChunk)
     const finalizeMessage = useLLMStore((s) => s.finalizeMessage)
     const notify = useNotificationStore((s) => s.show)
+
+    const { execute } = useIntegrationExecutor()
 
     const [isConnected, setIsConnected] = useState(false)
 
@@ -30,7 +33,7 @@ export function useLLMStream() {
 
         ws.onmessage = (event) => {
             const data = event.data
-            console.log('[WebSocket 수신]', data)
+            // console.log('[WebSocket 수신]', data)
 
             if (data === '[DONE]') {
                 console.log('[LLM] 스트리밍 종료됨')
@@ -43,6 +46,11 @@ export function useLLMStream() {
                 const parsed = JSON.parse(data)
 
                 if (parsed && typeof parsed === 'object' && parsed.type === 'interaction_id') {
+                    if (parsed?.toolCall?.integration) {
+                        console.log('[🎧 toolCall 감지됨]', parsed.toolCall)
+                        execute(parsed.toolCall)
+                    }
+                    
                     useLLMStore.setState((state) => {
                         const msgs = [...state.messages]
                         const last = [...msgs].reverse().find((m) => m.role === 'assistant' && !m.interactionId)

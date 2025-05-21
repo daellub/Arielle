@@ -24,9 +24,9 @@ export default function ChatBubble({ index, lang }: ChatBubbleProps) {
             ? messageObj.translatedMessage || messageObj.message
             : messageObj.message
 
-    useEffect(() => {
-        console.log(`[ChatBubble] index=${index}, lang=${lang}, content=`, content)
-    }, [content, index, lang])
+    // useEffect(() => {
+    //     console.log(`[ChatBubble] index=${index}, lang=${lang}, content=`, content)
+    // }, [content, index, lang])
 
     const handleFeedback = async (rating: 'up' | 'down') => {
         if (!interactionId || feedback) return

@@ -25,6 +25,7 @@ import {
     getServerStatus
 } from '@/app/lib/api/mcp'
 import { useMCPStore } from '@/app/llm/features/store/useMCPStore'
+import { SpotifyLoginStatus } from './UI/SpotifyLoginStatus'
 
 interface ServerEntry {
     name: string
@@ -67,6 +68,13 @@ export default function IntegrationsPanel() {
         healthCheck: '',
         enabled: true
     })
+
+    const availableAliases = [
+        { value: 'spotify', label: 'Spotify' },
+        { value: 'youtube', label: 'YouTube' },
+        { value: 'notion', label: 'Notion' },
+        { value: 'wolfram', label: 'Wolfram Alpha' },
+    ]
 
     const notify = useNotificationStore((s) => s.show)
 
@@ -276,9 +284,14 @@ export default function IntegrationsPanel() {
                                         <p className="text-[10px] font-medium text-white/40">비활성화됨</p>
                                     </>
                                 )}
+                                
                                 <p className="text-[10px]">↔ {srv.latency ?? '—'}ms</p>
                                 <p className="text-[10px]">⏱ {srv.timeoutMs}ms</p>
                             </div>
+
+                            {srv.alias === 'spotify' && integrations.includes('spotify') && (
+                                <SpotifyLoginStatus />
+                            )}
 
                             <div className="flex flex-wrap items-center gap-2 text-[9px] text-white/60">
                                 {srv.healthCheck && (
@@ -370,12 +383,30 @@ export default function IntegrationsPanel() {
                             value={newServer.endpoint}
                             onChange={e => handleFieldChange('endpoint', e.target.value)}
                         />
-                        <input
-                            className="w-full p-2 rounded bg-white/10 text-white text-sm"
-                            placeholder="Alias (ID)"
-                            value={newServer.alias}
-                            onChange={e => handleFieldChange('alias', e.target.value)}
-                        />
+                        <div className='flex items-center gap-2'>
+                            <label className="text-white text-sm">Alias</label>
+                            <select
+                                className="w-full p-2 rounded bg-white/10 text-white text-sm"
+                                value={newServer.alias}
+                                onChange={(e) => {
+                                    const alias = e.target.value
+                                    handleFieldChange('alias', alias)
+
+                                    if (alias === 'spotify') {
+                                        handleFieldChange('authType', 'none')
+                                    } else if (alias === 'wolfram') {
+                                        handleFieldChange('authType', 'apiKey')
+                                    }
+                                }}
+                            >
+                                <option className="text-black" value="">추가할 서비스를 선택하세요.</option>
+                                {availableAliases.map((a) => (
+                                    <option key={a.value} className="text-black" value={a.value}>
+                                        {a.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
 
                         <select
                             className="w-full p-2 rounded bg-white/10 text-white text-sm"

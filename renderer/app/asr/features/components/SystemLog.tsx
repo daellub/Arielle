@@ -4,7 +4,7 @@
 import styles from './SystemLog.module.css'
 import LogSearchBar from './LogSearchBar'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import axios from 'axios'
 import { Clock, BarChart3, FileText } from 'lucide-react'
 import { LineChart, Line, ResponsiveContainer, XAxis, Tooltip as RechartsTooltip} from 'recharts'
@@ -34,7 +34,7 @@ export default function SystemLog() {
     const [searchQuery, setSearchQuery] = useState('')
     const [suggestions, setSuggestions] = useState<string[]>([])
     const [filteredLogs, setFilteredLogs] = useState<LogEntry[]>([])
-    const [isSearching, setIsSearching] = useState(false)
+    const [isSearching, setxIsSearching] = useState(false)
     
     const toggleFilter = (type: LogEntry['type']) => {
         setFilterTypes(prev =>
@@ -42,11 +42,13 @@ export default function SystemLog() {
         )
     }
 
-    const displayedLogs = (searchQuery ? filteredLogs : logs).filter(
-        (log) =>
-            (filterTypes.length === 0 || filterTypes.includes(log.type)) &&
+    const displayedLogs = useMemo(() => {
+        const base = searchQuery ? filteredLogs : logs
+        return base.filter(
+            log => (filterTypes.length === 0 || filterTypes.includes(log.type)) &&
             log.message.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+        )
+    }, [logs, filteredLogs, searchQuery, filterTypes])
 
     function formatDate(raw: string) {
         const d = new Date(raw)
@@ -111,7 +113,7 @@ export default function SystemLog() {
     }
 
     useEffect(() => {
-        if (searchQuery.trim()) return
+        if (searchQuery.trim()) return () => {}
     
         const fetchAll = async () => {
             try {
@@ -134,7 +136,7 @@ export default function SystemLog() {
         }
     
         fetchAll()
-        const iv = setInterval(fetchAll, 1000)
+        const iv = setInterval(fetchAll, 3000)
         return () => clearInterval(iv)
     }, [searchQuery])
     
