@@ -143,10 +143,17 @@ async def websocket_chat(ws: WebSocket):
             conn.close()
 
     def extract_math_expr(text: str) -> str | None:
+        lowered = text.lower()
+
+        if 'spotify' in lowered or 'play' in lowered or 'music' in lowered:
+            return None
+        
         matches = re.findall(r'[\(]?[0-9\.\s\+\-\*/\^()]+[\)]?', text)
         
         for expr in matches:
             cleaned = expr.strip().replace("^", "**")
+            if ' - ' in cleaned:
+                continue
             if any(op in cleaned for op in ['+', '-', '*', '/', '**']):
                 print(f"[🧠 감지된 수식]: {cleaned}")
                 return cleaned
@@ -159,6 +166,32 @@ async def websocket_chat(ws: WebSocket):
             query = match.group(1).strip()
             print(f"[🔍 감지된 검색어]: {query}")
             return query
+        return None
+    
+    def extract_spotify_query(text: str) -> str | None:
+        match = re.search(r'\bplay\s+(.+?)\s+(?:on|with)\s+spotify\b', text, re.IGNORECASE)
+        if match:
+            song = match.group(1).strip()
+            print(f"[🎵 Spotify 요청 감지]: {song}")
+            return song
+        return None
+    
+    def extract_spotify_command(text: str) -> dict | None:
+        text = text.lower()
+
+        if re.search(r'\b(pause|stop)\b.*(music|song)?', text):
+            return {"action": "pause"}
+        if re.search(r'\b(resume|continue)\b.*(music|song)?', text):
+            return {"action": "play"}
+        if re.search(r'\b(skip|next)\b.*(track|song|music)?', text):
+            return {"action": "next"}
+        if re.search(r'\b(previous|back)\b.*(track|song)?', text):
+            return {"action": "previous"}
+        if re.search(r'\b(volume\s+up|turn\s+up\s+the\s+volume|increase\s+volume)\b', text):
+            return {"action": "volume_up"}
+        if re.search(r'\b(volume\s+down|turn\s+down\s+the\s+volume|decrease\s+volume)\b', text):
+            return {"action": "volume_down"}
+        
         return None
 
     await ws.accept()
@@ -259,6 +292,23 @@ async def websocket_chat(ws: WebSocket):
                                 print(f"[🔍 검색 결과]: {search_result}")
                     except Exception as e:
                         print(f"[❌ search 실행 실패]: {e}")
+
+            spotify_query = extract_spotify_query(msgs[-1]["content"])
+            spotify_cmd = extract_spotify_command(msgs[-1]["content"])
+
+            tool_call = None
+
+            if spotify_query:
+                tool_call = {
+                    "integration": "spotify",
+                    "action": "play",
+                    "query": spotify_query
+                }
+            elif spotify_cmd:
+                tool_call = {
+                    "integration": "spotify",
+                    **spotify_cmd
+                }
 
             expr = extract_math_expr(msgs[-1]["content"])
             tool_result = None
@@ -392,7 +442,8 @@ async def websocket_chat(ws: WebSocket):
                     "translated": ko_translation,
                     "ja_translated": ja_translation,
                     "emotion": emotion,
-                    "tone": tone
+                    "tone": tone,
+                    "toolCall": tool_call
                 })
             except Exception as e:
                 print(f"[ERROR] 번역 또는 DB 저장 실패: {e}")

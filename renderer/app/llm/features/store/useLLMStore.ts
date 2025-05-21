@@ -5,7 +5,7 @@ import { subscribeWithSelector } from 'zustand/middleware'
 type Role = 'user' | 'assistant'
 
 export interface LLMChatMessage {
-    role: 'user' | 'assistant'
+    role: 'user' | 'assistant' | 'system'
     message: string
     name?: string
     interactionId?: number
@@ -45,7 +45,7 @@ export const useLLMStore = create<LLMChatStore>()(
                 const last = state.messages[state.messages.length - 1]
                 if (last && last.role === role) {
                     const newMessage = last.message + chunk
-                    console.log('[StreamChunk APPEND]', { old: last.message, chunk, newMessage })
+                    // console.log('[StreamChunk APPEND]', { old: last.message, chunk, newMessage })
                     const updatedMessages = [...state.messages]
                     updatedMessages[updatedMessages.length - 1] = {
                         ...last,

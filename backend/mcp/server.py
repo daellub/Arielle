@@ -20,6 +20,8 @@ from backend.mcp.routes.log_routes import router as log_router
 
 from backend.mcp.routes.llm_load_routes import router as llm_load_router
 
+from backend.mcp.routes.integrations.spotify_routes import router as spotify_router
+
 app = FastAPI(title="Arielle MCP Control Server")
 app.add_middleware(
     CORSMiddleware,
@@ -43,3 +45,5 @@ app.include_router(security_router, prefix="/mcp", tags=["Security"])
 app.include_router(log_router, prefix="/mcp", tags=["Logs"])
 
 app.include_router(llm_load_router, prefix="/mcp", tags=["LLM Load"])
+
+app.include_router(spotify_router, prefix="/mcp", tags=["Spotify Integration"])
