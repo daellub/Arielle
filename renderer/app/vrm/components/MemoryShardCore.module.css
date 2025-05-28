@@ -1,0 +1,38 @@
+.memoryShard {
+    position: absolute;
+    top: 55%;
+    left: 50%;
+    width: 800px;
+    height: 800px;
+    transform: translate(-50%, -50%) rotate(-3deg);
+    background: url('/assets/shards/Mid_Fragment2_Glow.png');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+
+    opacity: 0.28;
+    filter:
+        drop-shadow(0 0 60px rgba(210, 160, 255, 0.2))
+        blur(1.2px)
+        brightness(1.15);
+    mix-blend-mode: screen;
+    pointer-events: none;
+
+    animation: floatShard 16s ease-in-out infinite;
+}
+
+@keyframes floatShard {
+    0% {
+        transform: translate(-50%, -50%) scale(1) rotate(-3deg);
+        filter: drop-shadow(0 0 30px rgba(220, 180, 255, 0.15)) blur(1.2px) brightness(1.15);
+    }
+    50% {
+        transform: translate(-50%, -52%) scale(1.035) rotate(1deg);
+        filter: drop-shadow(0 0 60px rgba(240, 200, 255, 0.25)) blur(1.6px) brightness(1.25);
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1) rotate(-3deg);
+        filter: drop-shadow(0 0 30px rgba(220, 180, 255, 0.15)) blur(1.2px) brightness(1.15);
+    }
+}
+/* Compare this snippet from renderer/app/vrm/components/VRMOverlayLayer.module.css: */

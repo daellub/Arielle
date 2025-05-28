@@ -18,6 +18,20 @@ export function useLLMStream() {
 
     const [isConnected, setIsConnected] = useState(false)
 
+    const waitForSocketConnection = (callback: () => void) => {
+        const socket = wsRef.current
+        if (!socket) return
+
+        const wait = () => {
+            if (socket.readyState === WebSocket.OPEN) {
+                callback()
+            } else {
+                setTimeout(wait, 100)
+            }
+        }
+        wait()
+    }
+
     const connectWebSocket = useCallback(() => {
         if (wsRef.current) {
             wsRef.current.close()
@@ -73,6 +87,23 @@ export function useLLMStream() {
                         parsed.tone ?? 'neutral'
                     )
                     
+                    const jaText = parsed.ja_translated
+                    const autoSpeak = useLLMStore.getState().autoSpeakEnabled
+
+                    if (jaText && autoSpeak) {
+                        fetch('http://localhost:8000/tts/synthesize', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ text: jaText }),
+                        })
+                        .then((res) => res.json())
+                        .then(({ audioUrl }) => {
+                            const audio = new Audio(audioUrl)
+                            audio.play()
+                        })
+                        .catch((err) => console.error('[TTS 실패]', err))
+                    }
+
                     useLLMStore.getState().setStreaming(false)
                     return
                 }
@@ -160,11 +191,12 @@ export function useLLMStream() {
             messages: recentWindow
         }
 
-        if (wsRef.current?.readyState === WebSocket.OPEN) {
-            wsRef.current.send(JSON.stringify(payload))
-        } else {
-            console.warn('[WebSocket] 아직 연결되지 않았습니다.')
-        }
+        console.log('[WebSocket 상태]', wsRef.current?.readyState)
+        console.log('[보낼 메시지]', payload)
+
+        waitForSocketConnection(() => {
+            wsRef.current?.send(JSON.stringify(payload))
+        })
     }
 
     const stop = () => {

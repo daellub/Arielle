@@ -10,6 +10,7 @@ export default function MagicCircle() {
     const selectedTab = useTabStore((state) => state.selectedTab)
 
     const isLLMPage = selectedTab === 'LLM'
+    const isTTSPage = selectedTab === 'TTS'
 
     return (
         <Image
@@ -21,7 +22,7 @@ export default function MagicCircle() {
                 styles.magicCircle,
                 'absolute',
                 'pointer-events-none transition-all duration-500',
-                isLLMPage ? 'invert brightness-[1.2]' : ''
+                isLLMPage || isTTSPage ? 'invert brightness-[1.2]' : ''
             )}
             priority
         />

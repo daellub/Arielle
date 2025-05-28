@@ -1,0 +1,17 @@
+.dustLayer {
+    position: absolute;
+    inset: 0;
+    background: url('/assets/particles/particle_low_v2_06.png');
+    background-size: cover;
+    background-repeat: no-repeat;
+    opacity: 0.5;
+    mix-blend-mode: screen;
+    pointer-events: none;
+    animation: driftDust 40s linear infinite;
+}
+
+@keyframes driftDust {
+    0% { transform: translate(0, 0); }
+    50% { transform: translate(-20px, 10px); }
+    100% { transform: translate(0, 0); }
+}

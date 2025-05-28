@@ -21,8 +21,10 @@ export interface LLMChatMessage {
 interface LLMChatStore {
     messages: LLMChatMessage[]
     streaming: boolean
-    setStreaming: (v: boolean) => void
+    autoSpeakEnabled: boolean
+    setAutoSpeakEnabled: (v: boolean) => void
 
+    setStreaming: (v: boolean) => void
     addMessage: (msg: LLMChatMessage) => void
     addStreamingChunk: (role: Role, chunk: string) => void
     finalizeMessage: () => void
@@ -34,6 +36,8 @@ export const useLLMStore = create<LLMChatStore>()(
     subscribeWithSelector<LLMChatStore>((set) => ({
         messages: [],
         streaming: false,
+        autoSpeakEnabled: true,
+        setAutoSpeakEnabled: (v) => set({ autoSpeakEnabled: v }),
 
         setStreaming: (v) => set({ streaming: v }),
 

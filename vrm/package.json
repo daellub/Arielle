@@ -1,0 +1,20 @@
+{
+  "name": "vrm",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dev-main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "vite": "^6.3.5"
+  },
+  "dependencies": {
+    "@pixiv/three-vrm": "^3.4.0",
+    "three": "^0.176.0"
+  }
+}

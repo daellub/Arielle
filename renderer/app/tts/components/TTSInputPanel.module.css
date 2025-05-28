@@ -1,0 +1,121 @@
+/* app/tts/components/TTSInputPanel.module.css */
+.panel {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+    border-radius: 1.5rem;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    box-shadow: 0 0 24px rgba(0, 0, 0, 0.3);
+}
+
+.textarea {
+    background: transparent;
+    color: #f0eaff;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 1rem;
+    border-radius: 1rem;
+    min-height: 140px;
+    resize: none;
+    font-size: 1rem;
+}
+
+.textarea::placeholder {
+    color: #999;
+}
+
+.sliders {
+    display: flex;
+    gap: 2rem;
+    flex-direction: row;
+}
+
+.sliderGroup {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    font-size: 0.875rem;
+    color: #ccc;
+}
+
+
+.range {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 9999px;
+    outline: none;
+    transition: background 0.3s ease;
+}
+
+.range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    background: linear-gradient(135deg, #c299ff, #7ee8fa);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 6px rgba(165, 110, 255, 0.5);
+    transition: transform 0.2s ease;
+}
+
+.range::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+.range::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    background: linear-gradient(135deg, #c299ff, #7ee8fa);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 6px rgba(165, 110, 255, 0.5);
+    transition: transform 0.2s ease;
+}
+
+.range::-moz-range-thumb:hover {
+    transform: scale(1.2);
+}
+
+.glassAurora {
+    position: relative;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+    border-radius: 1.5rem;
+    padding: 2rem;
+    overflow: hidden;
+    box-shadow: 0 0 24px rgba(0, 0, 0, 0.3);
+}
+
+.glowLayer {
+    position: absolute;
+    top: -40%;
+    left: -40%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(120deg, #a56eff, #7ee8fa, #a56eff);
+    background-size: 400% 400%;
+    animation: flowGlow 8s ease-in-out infinite;
+    opacity: 0.08;
+    filter: blur(80px);
+    z-index: 0;
+    pointer-events: none;
+}
+
+@keyframes flowGlow {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}

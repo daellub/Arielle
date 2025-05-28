@@ -1,0 +1,30 @@
+/* app/tts/components/TTSPresetSelector.module.css */
+.group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.button {
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #ccc;
+    font-size: 0.875rem;
+    font-weight: 500;
+    backdrop-filter: blur(8px);
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.button:hover {
+    opacity: 0.9;
+}
+
+.active {
+    color: #fff;
+    background: linear-gradient(135deg, #a56eff, #7ee8fa);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 12px rgba(165, 110, 255, 0.35);
+}

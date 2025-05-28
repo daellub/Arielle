@@ -1,0 +1,48 @@
+/* app/tts/components/TTSOutputPanel.module.css */
+.panel {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+    border-radius: 1.5rem;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.25);
+}
+
+.audio {
+    width: 100%;
+    border-radius: 0.5rem;
+}
+
+.whisper {
+    opacity: 0;
+    animation: fadeInShake 1.4s ease-out forwards;
+}
+
+@keyframes fadeInShake {
+    0% {
+        opacity: 0;
+        transform: translateX(0px);
+    }
+    20% {
+        opacity: 0.4;
+        transform: translateX(-1px);
+    }
+    40% {
+        opacity: 0.7;
+        transform: translateX(1.2px);
+    }
+    60% {
+        opacity: 1;
+        transform: translateX(-0.8px);
+    }
+    80% {
+        transform: translateX(0.4px);
+    }
+    100% {
+        transform: translateX(0);
+    }
+}
+

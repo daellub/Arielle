@@ -1,0 +1,116 @@
+/* app/vrm/components/VRMSceneLayer.module.css */
+.overlayContainer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.aurora {
+    background: url('/assets/overlays/Bokeh1_Purple.png');
+    background-size: cover;
+    opacity: 0.12;
+    mix-blend-mode: screen;
+    animation: drift 80s linear infinite;
+    position: absolute;
+    inset: 0;
+}
+
+.noise {
+    background: url('/assets/overlays/old_film_grain_00022.png');
+    background-size: cover;
+    opacity: 0.04;
+    mix-blend-mode: overlay;
+    position: absolute;
+    inset: 0;
+    animation: noiseFlicker 3s steps(1) infinite;
+}
+
+.grid {
+    background: url('/assets/overlays/Grid_with_Dot.png');
+    background-size: cover;
+    opacity: 0.05;
+    mix-blend-mode: soft-light;
+    position: absolute;
+    inset: 0;
+}
+
+.lightRay {
+    background: url('/assets/overlays/lightrays_00010.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    filter: blur(16px);
+    opacity: 0.15;
+    mix-blend-mode: screen;
+    position: absolute;
+    inset: 0;
+}
+
+.particles {
+    background: url('/assets/particles/particle_v2_02.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    opacity: 0.1;
+    position: absolute;
+    top: 20%;
+    left: 30%;
+    width: 120px;
+    height: 120px;
+    animation: floatSlow 18s ease-in-out infinite;
+}
+
+.memoryShard {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 800px;
+    height: 800px;
+    transform: translate(-50%, -50%) rotate(-2deg);
+    background: url('/assets/shards/Mid_Fragment2_Glow.png');
+    background-size: cover;
+    background-repeat: no-repeat;
+
+    opacity: 0.19;
+    pointer-events: none;
+    z-index: 4;
+
+    filter:
+        drop-shadow(0 0 16px #e0ccffaa)
+        blur(0.5px)
+        brightness(1.4)
+        saturate(1.3);
+
+    mix-blend-mode: screen;
+    animation: shardPulse 18s ease-in-out infinite;
+}
+
+@keyframes shardPulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1) rotate(-2deg); }
+    50%      { transform: translate(-50%, -50%) scale(1.05) rotate(1deg); }
+}
+
+@keyframes drift {
+    0% { background-position: 0% 50%; }
+    100% { background-position: 100% 50%; }
+}
+
+@keyframes noiseFlicker {
+    0% { opacity: 0.03; }
+    50% { opacity: 0.05; }
+    100% { opacity: 0.03; }
+}
+
+@keyframes floatSlow {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0); }
+}
+
+@keyframes shardDrift {
+    0% { transform: translate(-2px, 1px) rotate(0deg); }
+    50% { transform: translate(1px, -3px) rotate(1deg); }
+    100% { transform: translate(-2px, 1px) rotate(0deg); }
+}

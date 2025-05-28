@@ -1,23 +1,23 @@
 /* app/asr/features/components/LogSearchBar.module.css */
 
-.portalWrapper {
+.suggestionWrapper {
   position: fixed;
-  top: 52px;    /* 원하는 값으로 */
-  right: 52px;  /* 원하는 값으로 */
+  top: 52px;
+  right: 52px;
 }
 
 .scrollContainer {
     position: absolute;
-    top: 102px;   /* top-16 (4rem) = 64px; 필요에 따라 조정 */
-    right: 52px; /* right-13 (3.25rem) = 52px; 필요에 따라 조정 */
+    top: 102px;
+    right: 52px;
     width: 300px;
-    max-height: 160px; /* max-h-40 */
+    max-height: 160px;
     overflow-y: auto;
     background: white;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     border-radius: 0.5rem;
   }
-  /* 스크롤바 커스터마이징(Optional) */
+
   .scrollContainer::-webkit-scrollbar {
     width: 6px;
   }

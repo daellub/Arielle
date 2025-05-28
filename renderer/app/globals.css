@@ -283,6 +283,26 @@
     background: linear-gradient(to bottom, rgba(222, 195, 255, 0.5), rgba(255, 255, 255, 0.15));
 }
 
+@keyframes chromaPattern {
+    0% {
+        background-position: 0% 50%;
+        background-image: linear-gradient(
+            125deg,
+            #a56eff,
+            #7ee8fa,
+            #ffc8bb,
+            #a56eff
+        );
+    }
+    100% {
+        background-position: 100% 50%;
+    }
+}
+
+.animate-chromaPattern {
+    animation: chromaPattern 20s ease infinite;
+}
+
 .input {
   @apply w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400 text-sm;
 }

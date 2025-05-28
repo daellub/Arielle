@@ -1,0 +1,14 @@
+.flash {
+    position: fixed;
+    inset: 0;
+    background: white;
+    opacity: 0.9;
+    animation: flashFade 1s ease-out;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+@keyframes flashFade {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+}

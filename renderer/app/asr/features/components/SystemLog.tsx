@@ -23,7 +23,7 @@ interface ChartDataPoint {
 
 export default function SystemLog() {
     const [logs, setLogs] = useState<LogEntry[]>([])
-    const [mountTime] = useState<string>(() => new Date().toISOString())
+    const mountTime = useMemo(() => new Date().toISOString(), [])
 
     const [chartData, setChartData] = useState<ChartDataPoint[]>([])
     const [now, setNow] = useState('')
@@ -34,7 +34,7 @@ export default function SystemLog() {
     const [searchQuery, setSearchQuery] = useState('')
     const [suggestions, setSuggestions] = useState<string[]>([])
     const [filteredLogs, setFilteredLogs] = useState<LogEntry[]>([])
-    const [isSearching, setxIsSearching] = useState(false)
+    const [isSearching, setIsSearching] = useState(false)
     
     const toggleFilter = (type: LogEntry['type']) => {
         setFilterTypes(prev =>
@@ -62,7 +62,6 @@ export default function SystemLog() {
         return `${yyyy}. ${mm}. ${dd}. ${hh}:${mi}:${ss}`
     }
     
-    // 그래프 점수 계산
     function calculateScore(logs: LogEntry[]): number {
         let score = 0
         for (const log of logs) {
@@ -109,7 +108,7 @@ export default function SystemLog() {
     const handleSearch = () => fetchLogs(searchQuery)
     const handleSelect = (kw: string) => {
         setSearchQuery(kw)
-        fetchLogs(kw)
+        setTimeout(() => fetchLogs(kw), 0)
     }
 
     useEffect(() => {

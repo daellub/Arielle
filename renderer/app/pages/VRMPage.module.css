@@ -1,0 +1,151 @@
+/* app/pages/VRMPage.module.css */
+
+.container {
+    width: 100%;
+    height: 100vh;
+    background: radial-gradient(ellipse at 60% 40%, #eaf3ff 0%, #cbd9e9 60%, #b2c1d6 100%);
+    overflow: hidden;
+    position: relative;
+    font-family: 'Noto Sans JP', sans-serif;
+    color: #fff;
+}
+
+.wrapper {
+    display: flex;
+    width: 100%;
+    height: 100vh;
+}
+
+.leftPanel {
+    flex: 6;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: transparent;
+    position: relative;
+    z-index: 20;
+}
+
+.rightPanel {
+    flex: 3;
+    padding: 40px 24px;
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.02);
+    border-left: 1px solid rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(8px);
+}
+
+/* 내부 패널 스타일링 */
+.dataPanel {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    width: 100%;
+}
+
+.title {
+    font-size: 2.5rem;
+    color: #e4f0ff;
+    text-shadow: 0 0 6px #99d1ff66;
+    font-weight: 400;
+    letter-spacing: 0.03em;
+    line-height: 1;
+    margin-bottom: 0.4rem;
+}
+
+.title span {
+    font-size: 1rem;
+    color: #99ccff;
+    opacity: 0.8;
+    text-shadow: 0 0 4px #88baff66;
+    font-weight: 300;
+    letter-spacing: 0.15em;
+}
+
+.subtitle {
+    font-style: italic;
+    font-size: 0.9rem;
+    opacity: 0.6;
+    color: #c8dcff;
+    text-shadow: 0 0 3px #aac5ff22;
+    margin-bottom: 1.2rem;
+}
+
+.timeline {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #ccddee;
+    font-size: 0.75rem;
+    opacity: 0.6;
+    margin-bottom: 1.2rem;
+    letter-spacing: 0.05em;
+}
+
+.timelineLine {
+    position: relative;
+    flex-grow: 1;
+    height: 2px;
+    background: linear-gradient(to right, #96d1ff55, #c4aaff55);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.timelineLine::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0%;
+    width: 10px;
+    height: 100%;
+    background: #ffffff88;
+    border-radius: 999px;
+    animation: pulseDot 6s infinite ease-in-out;
+}
+
+@keyframes pulseDot {
+    0%   { left: 0%;   opacity: 0.3; }
+    50%  { left: 100%; opacity: 0.8; }
+    100% { left: 0%;   opacity: 0.3; }
+}
+
+
+.sliderContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.sliderWithValue {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.symbols {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    opacity: 0.6;
+    font-size: 0.9rem;
+    color: #a4a7d0;
+}
+
+.symbols span {
+    letter-spacing: 0.4em;
+    animation: subtleGlitch 4s ease-in-out infinite;
+    transition: filter 0.3s ease;
+}
+
+.symbols span:hover {
+    filter: brightness(1.4) drop-shadow(0 0 4px #8695b3);
+}
+
+@keyframes subtleGlitch {
+    0%, 100% { transform: translate(0, 0); }
+    45% { transform: translate(-0.5px, 0.5px); }
+    55% { transform: translate(0.7px, -0.3px); }
+}

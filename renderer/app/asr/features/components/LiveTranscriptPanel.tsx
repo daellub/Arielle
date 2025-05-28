@@ -2,12 +2,13 @@
 'use client'
 
 import { io, Socket } from 'socket.io-client'
-import React, { useEffect, useState } from 'react'
-import { AnimatePresence } from 'motion/react'
+import React, { useEffect, useMemo, useState } from 'react'
+import debounce from 'lodash.debounce'
 import axios from 'axios'
 
 import { useRecordingStore } from '@/app/store/useRecordingStore'
 import { useMicStore } from '@/app/asr/features/store/useMicStore'
+import { initAzureMicRecognizer } from '@/app/asr/features/hooks/useAzureMicRecognizer'
 import { Transcript, useTranscriptStore } from '@/app/asr/features/store/useTranscriptStore'
 import { useSelectedModelStore } from '@/app/asr/features/store/useSelectedModelStore'
 import { useNotificationStore } from '@/app/store/useNotificationStore'
@@ -15,7 +16,6 @@ import { useNotificationStore } from '@/app/store/useNotificationStore'
 export default function LiveTranscriptPanel() {
     const { 
         setTranscript,
-        stopTranscript,
         finalizeTranscript,
         clearTranscript,
         currentTranscript,
@@ -23,19 +23,24 @@ export default function LiveTranscriptPanel() {
     } = useTranscriptStore()
 
     const { deviceId, deviceName } = useMicStore()
-
     const { selectedModel } = useSelectedModelStore()
 
     const [socket, setSocket] = useState<Socket | null>(null)
     const [isConnected, setIsConnected] = useState(false)
+    const [recognizer, setRecognizer] = useState<any>(null)
 
-    const isRecording = useRecordingStore.getState().isRecording
-
+    const isRecording = useRecordingStore((s) => s.isRecording)
     const setRecording = useRecordingStore((s) => s.setRecording)
+
+    const debouncedSetTranscript = useMemo(
+    () => debounce((text: string) => setTranscript(text), 250),
+    [setTranscript]
+    )
+
 
     const notify = useNotificationStore((s) => s.show)
 
-    const handleStart = () => {
+    const handleStart = async () => {
         if (!selectedModel || selectedModel.status !== 'active') {
             notify('모델이 선택되지 않았거나 로드되지 않았습니다.', 'info')
             return
@@ -51,6 +56,44 @@ export default function LiveTranscriptPanel() {
             return
         }
 
+        if (selectedModel.framework === 'Azure') {
+            try {
+                const res = await axios.get(`http://localhost:8000/asr/models/${selectedModel.id}/credentials`)
+                const creds = res.data
+
+                const instance = await initAzureMicRecognizer({
+                    deviceId,
+                    sampleRate: 16000,
+                    apiKey: creds.apiKey,
+                    region: creds.region,
+                    endpoint: creds.endpoint,
+                    language: creds.language,
+                    onText: (text) => {
+                        setTranscript(text)
+                        finalizeTranscript()
+                        axios.post('http://localhost:8000/asr/save/result', {
+                            model: selectedModel.name,
+                            text,
+                            language: creds.language,
+                        }).catch((err) => {
+                            console.error('[DB 저장 실패]', err)
+                        })
+                    },
+                })
+
+                setRecognizer(instance)
+                setIsConnected(true)
+                setRecording(true)
+                notify('Azure 인식 시작됨 🎙', 'success')
+                return
+            } catch (err) {
+                console.error('[Azure Init Error]', err)
+                notify('Azure STT 시작 실패', 'error')
+                return
+            }
+        }
+
+
         const newSocket = io('http://localhost:8000', {
             path: "/socket.io",
             transports: ['websocket'],
@@ -61,7 +104,7 @@ export default function LiveTranscriptPanel() {
         newSocket.connect()
 
         newSocket.on('recognizing', (data: { text: string }) => {
-            setTranscript(data.text)
+            debouncedSetTranscript(data.text)
         })
 
         newSocket.on('recognized', async (data: { text: string}) => {
@@ -124,20 +167,24 @@ export default function LiveTranscriptPanel() {
             notify('현재 녹음 중이 아닙니다.', 'info')
             return
         }
-        if (socket) {
-            if (selectedModel.framework === 'Azure') {
-                socket.emit('stop_azure_mic', {});
-            } else {
-                socket.emit('stop_transcribe', {});
-            }
-            setIsConnected(false);
-            setRecording(false);
 
-            socket.disconnect()
-
-            setSocket(null)
+        if (selectedModel.framework === 'Azure') {
+            recognizer?.stop?.()
+            setRecognizer(null)
+            setIsConnected(false)
+            setRecording(false)
+            notify('Azure 인식 종료됨 🛑', 'success')
+            return
         }
-        notify('Socket과 연결을 종료했습니다.', 'success')
+
+        if (socket?.connected) {
+            socket.emit('stop_transcribe', {})
+            socket.disconnect()
+            setSocket(null)
+            setIsConnected(false)
+            setRecording(false)
+            notify('Socket 연결 종료됨', 'success')
+        }
     }
 
     const handleReset = () => {
@@ -145,13 +192,20 @@ export default function LiveTranscriptPanel() {
         clearTranscript()
     }
 
+    const displayedText = useMemo(() => {
+        if (currentTranscript) return currentTranscript.text
+        return isConnected
+            ? '✅ 실시간 텍스트 수신 중...'
+            : '🟡 연결되지 않음. 시작을 눌러주세요.'
+    }, [currentTranscript, isConnected])
+
     useEffect(() => {
         return () => {
-            if (socket && socket.connected) {
+            if (socket?.connected) {
                 socket.disconnect()
             }
         }
-    }, [])
+    }, [socket])
 
     return (
         <>
@@ -173,7 +227,7 @@ export default function LiveTranscriptPanel() {
                 <div className='mb-4'>
                     <div className='text-[14px] text-black mb-1'>실시간 텍스트</div>
                     <div className='text-[16px] font-medium text-neutral-600'>
-                        {currentTranscript ? currentTranscript.text : (isConnected ? '✅ 실시간 텍스트 수신 중...' : '🟡 연결되지 않음. 시작을 눌러주세요.')}
+                        {displayedText}
                     </div>
                 </div>
 

@@ -1,0 +1,72 @@
+/* app/tts/components/aurora/AuroraText.module.css */
+.auroraText {
+    position: relative;
+    display: inline-block;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    line-height: 1.1;
+}
+
+.sm {
+    font-size: 1.25rem;
+}
+.md {
+    font-size: 2rem;
+}
+.lg {
+    font-size: 3rem;
+}
+
+.red,
+.blue,
+.main {
+    position: absolute;
+    top: 0;
+    left: 0;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.red {
+    color: #ff4dff;
+    transform: translateX(-1px);
+    filter: blur(0.8px);
+    z-index: 0;
+}
+
+.blue {
+    color: #00ffff;
+    transform: translateX(1px);
+    filter: blur(0.8px);
+    z-index: 0;
+}
+
+.main {
+    color: #ffffff;
+    z-index: 1;
+    position: relative;
+}
+
+/* 글리치 효과 */
+.glitch .red {
+    animation: glitch-red 1.4s infinite;
+}
+.glitch .blue {
+    animation: glitch-blue 1.4s infinite;
+}
+
+@keyframes glitch-red {
+    0%, 100% { transform: translateX(-1px); }
+    50% { transform: translateX(-3px); }
+}
+
+@keyframes glitch-blue {
+    0%, 100% { transform: translateX(1px); }
+    50% { transform: translateX(2px); }
+}
+
+/* 흐릿하게 사라지는 느낌 */
+.blur .main {
+    filter: blur(2px);
+    opacity: 0.8;
+}

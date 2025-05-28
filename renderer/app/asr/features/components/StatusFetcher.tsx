@@ -36,25 +36,28 @@ export default function StatusFetcher() {
     }, [])
 
     useEffect(() => {
-        const checkMicAccess = async () => {
+        let mounted = true
+        const t = setTimeout(async () => {
+            if (!deviceId) {
+                setRecordStatus('unknown')
+                return
+            }
+
             try {
-                if (!deviceId) {
-                    setRecordStatus('unknown')
-                    return
-                }
-        
                 const stream = await navigator.mediaDevices.getUserMedia({
                     audio: { deviceId: { exact: deviceId } }
                 })
-        
-                setRecordStatus('ready')
+                if (mounted) setRecordStatus('ready')
                 stream.getTracks().forEach((track) => track.stop())
             } catch (err) {
-                console.warn('마이크 접근 실패:', err)
-                setRecordStatus('error')
+                if (mounted) setRecordStatus('error')
             }
+        }, 300)
+
+        return () => {
+            mounted = false
+            clearTimeout(t)
         }
-        checkMicAccess()
     }, [deviceId])
 
     useEffect(() => {

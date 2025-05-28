@@ -1,0 +1,45 @@
+/* app/tts/components/aurora/AuroraButton.module.css */
+.button {
+    position: relative;
+    padding: 0.75rem 1.75rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.glow {
+    content: '';
+    position: absolute;
+    top: -40%;
+    left: -40%;
+    width: 180%;
+    height: 180%;
+    background: radial-gradient(circle at center, #c299ff 0%, #7ee8fa 30%, #e8a0ff 60%);
+    opacity: 0.15;
+    filter: blur(40px);
+    animation: pulseGlow 6s ease-in-out infinite;
+    z-index: 0;
+}
+
+@keyframes pulseGlow {
+    0%, 100% { transform: scale(1); opacity: 0.15; }
+    50% { transform: scale(1.2); opacity: 0.25; }
+}
+
+.content {
+    position: relative;
+    z-index: 1;
+}

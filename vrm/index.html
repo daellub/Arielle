@@ -1,0 +1,62 @@
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>VRM Viewer</title>
+        <link rel="stylesheet" href="/main.css" />
+        <link rel="stylesheet" href="/dev-panel.css" />
+    </head>
+    <body style="background: rgba(0, 0, 0, 0);">
+        <div id="app"></div>
+
+        <div id="dev-panel">
+            <h3>🎛 Dev Panel</h3>
+
+            <div class="dev-row">
+                <button id="toggle-pos">📍 Position</button>
+                <div id="pos-controls" class="collapsible">
+                    <label>X</label>
+                    <input type="range" id="posX" min="-5" max="5" step="0.01" value="0" />
+
+                    <label>Y</label>
+                    <input type="range" id="posY" min="-1" max="2" step="0.01" value="1.4" />
+
+                    <label>Z</label>
+                    <input type="range" id="posZ" min="-5" max="5" step="0.01" value="0" />
+                </div>
+            </div>
+
+            <div class="dev-row">
+                <label>Scale</label>
+                <input type="range" id="scale" min="0.2" max="2" step="0.01" value="1" />
+            </div>
+
+            <div class="dev-row">
+                <label>Opacity</label>
+                <input type="range" id="opacity" min="0" max="1" step="0.01" value="1" />
+            </div>
+
+            <div class="dev-row">
+                <button id="toggle-expression">🎭 Expression</button>
+                <div id="expression-controls" class="collapsible">
+                    <label>Smile</label>
+                    <input type="range" id="exp-smile" min="0" max="1" step="0.01" value="0" />
+
+                    <label>Angry</label>
+                    <input type="range" id="exp-angry" min="0" max="1" step="0.01" value="0" />
+
+                    <label>Surprised</label>
+                    <input type="range" id="exp-surprised" min="0" max="1" step="0.01" value="0" />
+
+                    <label>Blink</label>
+                    <input type="range" id="exp-blink" min="0" max="1" step="0.01" value="0" />
+
+                    <label>Heart Eyes</label>
+                    <input type="range" id="exp-heart" min="0" max="1" step="0.01" value="0" />
+                </div>
+            </div>
+        </div>
+
+        <script type="module" src="/main.js"></script>
+    </body>
+</html>

@@ -1,0 +1,13 @@
+/* ParallaxText.module.css */
+.parallaxText {
+    position: absolute;
+    top: 16%;
+    left: 72%;
+    font-size: 0.65rem;
+    font-family: 'Share Tech Mono', monospace;
+    color: #bbdfff;
+    mix-blend-mode: screen;
+    opacity: 0.5;
+    transform: translate(calc(var(--mx, 0) * 6px), calc(var(--my, 0) * 6px));
+    transition: transform 0.1s ease-out;
+}

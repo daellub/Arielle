@@ -14,7 +14,6 @@ import {
     ToggleLeft,
     ToggleRight
 } from 'lucide-react'
-import clsx from 'clsx'
 
 import { useMCPStore } from '@/app/llm/features/store/useMCPStore'
 import { useNotificationStore } from '@/app/store/useNotificationStore'

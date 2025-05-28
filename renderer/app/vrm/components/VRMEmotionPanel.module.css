@@ -1,0 +1,115 @@
+/* app/vrm/components/VRMEmotionPanel.module.css */
+.panel {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    width: 100%;
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.sectionTitle {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #a8c6e8;
+    letter-spacing: 0.05em;
+    font-family: 'Orbitron', sans-serif;
+    text-transform: uppercase;
+}
+
+.emotionGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.emotionCard {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 14px;
+    padding: 10px 12px;
+    text-align: center;
+    color: #89a8cc;
+    font-size: 0.75rem;
+    backdrop-filter: blur(8px);
+    transition: all 0.2s ease;
+}
+.emotionCard:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 8px rgba(180, 220, 255, 0.2);
+}
+.active {
+    background: linear-gradient(145deg, #a5cfff, #c0aaff);
+    color: #fff;
+    box-shadow: 0 0 12px rgba(180, 220, 255, 0.3);
+}
+
+.emoji {
+    display: block;
+    font-size: 1.2rem;
+    margin-bottom: 4px;
+}
+
+.sliderBox {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 6px;
+    font-size: 0.75rem;
+    color: #aac0df;
+}
+
+.poseHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.headerRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.toggleBtn {
+    background: none;
+    border: none;
+    color: #88aaff;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+.toggleBtn:hover {
+    transform: scale(1.1);
+}
+
+.poseGrid {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding-top: 6px;
+}
+
+
+.poseCard {
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 12px;
+    padding: 10px 14px;
+    backdrop-filter: blur(8px);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.poseLabel {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    color: #a8c6e8;
+}

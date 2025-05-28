@@ -1,0 +1,70 @@
+/* app/vrm/components/GlitchText.module.css */
+
+.glitch {
+    position: relative;
+    color: #aee4ff;
+    text-shadow: 0 0 4px #66ccff66;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    animation: glitchShift 3s infinite ease-in-out;
+}
+
+.glitch::before,
+.glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    left: 0;
+    width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.glitch::before {
+    color: #ff00cc80;
+    top: -1px;
+    animation: glitchFlickerTop 2s infinite;
+}
+
+.glitch::after {
+    color: #00ffff80;
+    top: 1px;
+    animation: glitchFlickerBottom 2.4s infinite;
+}
+
+@keyframes glitchFlickerTop {
+    0%, 100% { clip-path: inset(0 0 85% 0); transform: translateX(0); }
+    20% { clip-path: inset(0 0 60% 0); transform: translateX(-1px); }
+    40% { clip-path: inset(0 0 40% 0); transform: translateX(1px); }
+    60% { clip-path: inset(0 0 20% 0); transform: translateX(0); }
+}
+
+@keyframes glitchFlickerBottom {
+    0%, 100% { clip-path: inset(85% 0 0 0); transform: translateX(0); }
+    20% { clip-path: inset(60% 0 0 0); transform: translateX(1px); }
+    40% { clip-path: inset(40% 0 0 0); transform: translateX(-1px); }
+    60% { clip-path: inset(20% 0 0 0); transform: translateX(0); }
+}
+
+@keyframes glitchShift {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(0.5px); }
+}
+
+@keyframes glitchTop {
+    0% { clip-path: inset(0 0 80% 0); transform: translateX(0); }
+    20% { clip-path: inset(0 0 60% 0); transform: translateX(-1px); }
+    40% { clip-path: inset(0 0 40% 0); transform: translateX(1px); }
+    60% { clip-path: inset(0 0 20% 0); transform: translateX(0); }
+    80% { clip-path: inset(0 0 60% 0); transform: translateX(-1px); }
+    100% { clip-path: inset(0 0 80% 0); transform: translateX(1px); }
+}
+
+@keyframes glitchBottom {
+    0% { clip-path: inset(80% 0 0 0); transform: translateX(0); }
+    20% { clip-path: inset(60% 0 0 0); transform: translateX(1px); }
+    40% { clip-path: inset(40% 0 0 0); transform: translateX(-1px); }
+    60% { clip-path: inset(20% 0 0 0); transform: translateX(0); }
+    80% { clip-path: inset(60% 0 0 0); transform: translateX(1px); }
+    100% { clip-path: inset(80% 0 0 0); transform: translateX(-1px); }
+}

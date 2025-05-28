@@ -1,0 +1,56 @@
+/* app/tts/components/TTSHistoryCard.module.css */
+.card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.05);
+}
+
+.card:hover {
+    border-color: rgba(165, 110, 255, 0.2);
+    box-shadow:
+        0 0 16px rgba(165, 110, 255, 0.25),
+        0 0 32px rgba(126, 232, 250, 0.15);
+    backdrop-filter: blur(16px);
+    transform: scale(1.015);
+}
+
+.text {
+    color: #e0d2ff;
+    font-weight: 500;
+    font-size: 1rem;
+}
+
+.audio {
+    width: 100%;
+    border-radius: 0.5rem;
+}
+
+.footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.875rem;
+    color: #b8aaff;
+}
+
+.actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.actions button {
+    background: none;
+    border: none;
+    color: #a56eff;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+
+.actions button:hover {
+    opacity: 0.8;
+    text-decoration: underline;
+}
