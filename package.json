@@ -23,9 +23,13 @@
         "typescript": "^5.8.3"
     },
     "dependencies": {
+        "@gltf-transform/core": "^4.1.4",
+        "@gltf-transform/extensions": "^4.1.4",
+        "@gltf-transform/functions": "^4.1.4",
         "@headlessui/react": "^2.2.2",
         "@picovoice/web-voice-processor": "^4.0.9",
         "@pixiv/three-vrm": "^3.4.0",
+        "@pixiv/three-vrm-animation": "^3.4.1",
         "@radix-ui/react-dialog": "^1.1.13",
         "@react-hookz/web": "^25.1.1",
         "@ricky0123/vad-web": "^0.0.22",

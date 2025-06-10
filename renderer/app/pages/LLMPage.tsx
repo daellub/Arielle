@@ -30,6 +30,7 @@ export default function LLMPage() {
     
     const [lastEmotion, setLastEmotion] = useState('neutral')
     const [lastTone, setLastTone] = useState('정중체')
+    const [lastBlendshape, setLastBlendshape] = useState('Neutral')
 
     useEffect(() => {
         const unsub = useLLMStore.subscribe(
@@ -39,6 +40,7 @@ export default function LLMPage() {
                 if (last) {
                     setLastEmotion(last.emotion ?? 'neutral')
                     setLastTone(last.tone ?? '정중체')
+                    setLastBlendshape(last.blendshape ?? 'Neutral')
                 }
             }
         )
@@ -89,6 +91,7 @@ export default function LLMPage() {
                                 <CharacterStatusCard
                                     emotion={lastEmotion}
                                     tone={lastTone}
+                                    blendshape={lastBlendshape}
                                 />
                                 <LLMSystemStats />
                                 <SectionTimerCard />

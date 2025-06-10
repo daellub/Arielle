@@ -2,6 +2,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
+import { useExpressionSocket } from '@/app/vrm/hooks/useExpressionSocket'
 import { useLLMStore } from '@/app/llm/features/store/useLLMStore'
 import { useMCPStore } from '@/app/llm/features/store/useMCPStore'
 import { useNotificationStore } from '@/app/store/useNotificationStore'
@@ -13,6 +14,8 @@ export function useLLMStream() {
     const addStreamingChunk = useLLMStore((s) => s.addStreamingChunk)
     const finalizeMessage = useLLMStore((s) => s.finalizeMessage)
     const notify = useNotificationStore((s) => s.show)
+
+    const { sendExpression } = useExpressionSocket()
 
     const { execute } = useIntegrationExecutor()
 
@@ -59,6 +62,8 @@ export function useLLMStream() {
             try {
                 const parsed = JSON.parse(data)
 
+                console.log('[📥 WebSocket 수신 데이터]', parsed)
+
                 if (parsed && typeof parsed === 'object' && parsed.type === 'interaction_id') {
                     if (parsed?.toolCall?.integration) {
                         console.log('[🎧 toolCall 감지됨]', parsed.toolCall)
@@ -84,8 +89,11 @@ export function useLLMStream() {
                     useLLMStore.getState().updateEmotionTone(
                         parsed.id,
                         parsed.emotion ?? 'neutral',
-                        parsed.tone ?? 'neutral'
+                        parsed.tone ?? 'neutral',
+                        parsed.blendshape ?? 'neutral'
                     )
+
+                    sendExpression(parsed.blendshape ?? 'Neutral')
                     
                     const jaText = parsed.ja_translated
                     const autoSpeak = useLLMStore.getState().autoSpeakEnabled

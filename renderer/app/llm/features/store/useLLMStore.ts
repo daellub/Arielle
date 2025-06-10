@@ -15,6 +15,7 @@ export interface LLMChatMessage {
     jaTranslatedMessage?: string
     emotion?: string
     tone?: string
+    blendshape?: string
     modelId?: string
 }
 
@@ -28,7 +29,7 @@ interface LLMChatStore {
     addMessage: (msg: LLMChatMessage) => void
     addStreamingChunk: (role: Role, chunk: string) => void
     finalizeMessage: () => void
-    updateEmotionTone: (interactionId: number, emotion: string, tone: string) => void
+    updateEmotionTone: (interactionId: number, emotion: string, tone: string, blendshape: string) => void
     resetMessages: () => void
 }
 
@@ -73,11 +74,11 @@ export const useLLMStore = create<LLMChatStore>()(
                 return { messages: msgs }
             }),
 
-        updateEmotionTone: (interactionId, emotion, tone) =>
+        updateEmotionTone: (interactionId, emotion, tone, blendshape) =>
             set((state) => {
                 const updated = state.messages.map((msg) => {
                     if (msg.interactionId === interactionId) {
-                        const newMsg = { ...msg, emotion, tone }
+                        const newMsg = { ...msg, emotion, tone, blendshape }
                         return newMsg
                     }
                     return msg

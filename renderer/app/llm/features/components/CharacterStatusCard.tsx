@@ -7,14 +7,17 @@ import { useToneLabel } from '@/app/llm/hooks/useToneLabel'
 interface Props {
     emotion?: string
     tone?: string
+    blendshape?: string
 }
 
 export default function CharacterStatusCard({
     emotion,
-    tone
+    tone,
+    blendshape
 }: Props) {
     const emotionText = useEmotionLabel(emotion)
     const toneText = useToneLabel(tone)
+    const blendshapeName = blendshape ?? 'Neutral'
 
     const statusTextMap: Record<string, string> = {
         joyful: '기분 좋은 말들을 준비하고 있어요.',
@@ -66,7 +69,11 @@ export default function CharacterStatusCard({
                 <span className="text-white/60">응답 톤</span>{' '}
                 <span className="text-blue-300 font-medium">{toneText}</span>
             </div>
-
+            <div>
+                <span className="text-white/60">표정 클립</span>{' '}
+                <span className="text-pink-300 font-medium">{blendshapeName}</span>
+            </div>
+            
             <div className="text-xs text-white/50 pt-1">
                 {statusText}
             </div>

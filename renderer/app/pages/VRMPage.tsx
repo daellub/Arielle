@@ -20,7 +20,7 @@ export default function VRMPage() {
         <div className={styles.container}>
             <div className={styles.wrapper}>
                 <div className={styles.leftPanel}>
-                    <VRMViewerModel key={viewerKey} />
+                    {/* <VRMViewerModel key={viewerKey} /> */}
                     <VRMSceneLayer />
                     <MemoryLoadingBar trigger={0} />
                     <VRMMemoryPlayer />
