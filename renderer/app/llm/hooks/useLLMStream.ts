@@ -2,7 +2,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { useExpressionSocket } from '@/app/vrm/hooks/useExpressionSocket'
+// import { useExpressionSocket } from '@/app/vrm/hooks/useExpressionSocket'
 import { useLLMStore } from '@/app/llm/features/store/useLLMStore'
 import { useMCPStore } from '@/app/llm/features/store/useMCPStore'
 import { useNotificationStore } from '@/app/store/useNotificationStore'
@@ -15,7 +15,7 @@ export function useLLMStream() {
     const finalizeMessage = useLLMStore((s) => s.finalizeMessage)
     const notify = useNotificationStore((s) => s.show)
 
-    const { sendExpression } = useExpressionSocket()
+    // const { sendExpression } = useExpressionSocket()
 
     const { execute } = useIntegrationExecutor()
 
@@ -93,7 +93,7 @@ export function useLLMStream() {
                         parsed.blendshape ?? 'neutral'
                     )
 
-                    sendExpression(parsed.blendshape ?? 'Neutral')
+                    // sendExpression(parsed.blendshape ?? 'Neutral')
                     
                     const jaText = parsed.ja_translated
                     const autoSpeak = useLLMStore.getState().autoSpeakEnabled
