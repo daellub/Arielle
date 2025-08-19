@@ -10,7 +10,12 @@ export interface Model {
     framework: string
     device: string
     latency: string
+    latencyMs?: number
     logo: string
     status: ModelStatus
     loadedTime?: string
+    loadedAtIso?: string
+
+    // 로컬 모델 대비 확장성
+    config?: Record<string, any>
 }

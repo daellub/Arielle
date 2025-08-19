@@ -1,6 +1,7 @@
 // app/asr/features/components/RecordingStatusIndicator.tsx
 'use client'
 
+import clsx from 'clsx'
 import { useEffect, useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
 import { Circle, CircleDot } from 'lucide-react'
@@ -9,13 +10,13 @@ import { useRecordingStore } from '@/app/store/useRecordingStore'
 export default function RecordingStatusIndicator() {
     const isRecording = useRecordingStore((s) => s.isRecording)
     const [isVisible, setIsVisible] = useState(true)
-    const hideTimeout = useRef<NodeJS.Timeout | null>(null)
+    const hideTimeout = useRef<number | null>(null)
 
     useEffect(() => {
         if (!isRecording) {
-            if (hideTimeout.current) clearTimeout(hideTimeout.current)
+            if (hideTimeout.current !== null) { window.clearTimeout(hideTimeout.current); hideTimeout.current = null }
         
-            hideTimeout.current = setTimeout(() => {
+            hideTimeout.current = window.setTimeout(() => {
                 setIsVisible(false)
             }, 3000)
         } else {
@@ -29,14 +30,14 @@ export default function RecordingStatusIndicator() {
     }, [isRecording])
     
     return (
-        <AnimatePresence mode='wait'>
+        <AnimatePresence mode='wait' initial={false}>
             {isVisible && (
                 <motion.div
                     key="recording-indicator"
-                    initial={{ opacity: 1, y: -50 }}
+                    initial={{ opacity: 1, y: -6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 1, y: -50 }}
-                    transition={{ duration: 0.3 }}
+                    exit={{ opacity: 1, y: -6 }}
+                    transition={{ duration: 0.2 }}
                     className="fixed top-5 left-1/2 transform -translate-x-1/2 z-[9999]"
                 >
                     <div className="flex items-center gap-5 px-7 py-[12px] bg-blue-50 shadow-md rounded-full min-w-[200px]">
@@ -45,17 +46,18 @@ export default function RecordingStatusIndicator() {
                             {isRecording && (
                                 <span className="absolute w-4 h-4 rounded-full bg-red-400 opacity-50 animate-ping" />
                             )}
-                            <motion.div
-                                animate={{ color: isRecording ? '#ef4444' : '#f97316' }}
-                                transition={{ duration: 0.3 }}
-                                className='relative z-10'
+                            <div
+                                className={clsx(
+                                    'relative z-10 transition-colors duration-300',
+                                    isRecording ? 'text-red-500' : 'text-orange-500'
+                                )}
                             >
                                 {isRecording ? (
                                     <CircleDot className='w-3 h-3' />
                                 ) : (
                                     <Circle className='w-3 h-3' />
                                 )}
-                            </motion.div>
+                            </div>
                         </div>
                         
                         {/* 텍스트 */}

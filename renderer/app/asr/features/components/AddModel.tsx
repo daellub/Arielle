@@ -1,18 +1,22 @@
-// 📑 app/components/AddModel.tsx
+// app/asr/features/components/AddModel.tsx
 'use client'
 
 import axios from 'axios'
 import clsx from 'clsx'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import Select from 'react-select'
 import CreatableSelect from 'react-select/creatable'
 import { AnimatePresence, motion } from 'motion/react'
+import { Eye, EyeOff, EyeOffIcon } from 'lucide-react'
 
 import { useNotificationStore } from '@/app/store/useNotificationStore'
 import HuggingFaceModelDrawer from './HuggingFaceModelDrawer'
 import { HuggingFaceModel } from '@/app/asr/features/utils/huggingFaceAPI'
 
+type Option = { value: string; label: string }
 
+// 모델 옵션
+// TODO: 추가 지원 예정
 const modelOptions = [
     { value: "OpenAI", label: "OpenAI" },
     { value: "Meta", label: "Meta" },
@@ -20,6 +24,7 @@ const modelOptions = [
     { value: "Azure", label: "Azure" },
 ]
 
+// 라이브러리 옵션
 const libraryOptions = [
     { value: "OpenVINO", label: "OpenVINO" },
     { value: "PyTorch", label: "PyTorch" },
@@ -27,6 +32,7 @@ const libraryOptions = [
     { value: "TensorFlow", label: "Tensorflow" },
 ]
 
+// 장치 옵션
 const deviceOptions = [
     { value: "AUTO", label: "AUTO" },
     { value: "CPU", label: "CPU" },
@@ -34,6 +40,7 @@ const deviceOptions = [
     { value: "NPU", label: "NPU" },
 ]
 
+// 장치 옵션
 const languageOptions = [
     { value: "ko", label: "한국어 (ko)" },
     { value: "en", label: "영어 (en)" },
@@ -81,24 +88,54 @@ interface AddModelProps {
 }
 
 export default function AddModel({ open, onClose, onModelAdded }: AddModelProps) {
+    const notify = useNotificationStore((s) => s.show)
+
+    // 로컬 설정
     const [name, setName] = useState('')
     const [main, setMain] = useState('')
     const [library, setLibrary] = useState('')
     const [device, setDevice] = useState('CPU')
     const [language, setLanguage] = useState('ko')
     const [path, setPath] = useState('')
-    const [isLoading, setIsLoading] = useState(false)
-
-    const notify = useNotificationStore((s) => s.show)
-
-    const [showHuggingFaceDrawer, setShowHuggingfaceDrawer] = useState(false)
 
     // Azure 설정
     const [azureMode, setAzureMode] = useState<'endpoint' | 'region'>('endpoint')
-    const isAzureModel = main === 'Azure'
     const [endpoint, setEndpoint] = useState('')
     const [region, setRegion] = useState('')
     const [apiKey, setApiKey] = useState('')
+    const [showApi, setShowApi] = useState(false)
+
+    // UI
+    const [showHuggingFaceDrawer, setShowHuggingfaceDrawer] = useState(false)
+    const [isLoading, setIsLoading] = useState(false)
+
+    const isAzureModel = useMemo(() => main === 'Azure', [main])
+    const isFormOpen = open
+
+    const endpointValid = useMemo(() => {
+        if (azureMode !== 'endpoint') return true
+        if (!endpoint) return false
+
+        // 엔드포인트 URL 유효성 검사
+        try {
+            const url = new URL(endpoint)
+            return url.protocol === 'https:'
+        } catch {
+            return false
+        }
+    }, [endpoint, azureMode])
+
+    const canSubmit = useMemo(() => {
+        if (!name.trim() || !main.trim()) return false
+        if (isAzureModel) {
+            if (!apiKey.trim()) return false
+            if (azureMode === 'endpoint') return endpointValid
+            if (azureMode === 'region') return !!region
+            return false
+        } else {
+            return !!library && !!device && !!path
+        }
+    }, [name, main, isAzureModel, apiKey, azureMode, endpointValid, region, library, device, path])
 
     const resetForm = () => {
         setName('')
@@ -110,24 +147,32 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
         setEndpoint('')
         setRegion('koreacentral')
         setApiKey('')
+        setShowApi(false)
+        setAzureMode('endpoint')
     }
 
-    const handleSubmit = async () => {
-        const isFieldEmpty = (field: string | undefined) => !field || field.trim() === ''
+    const handleBrowseModelPath = useCallback(async () => {
+        try {
+            const selectedPath = await window.electronAPI.openModelDialog?.()
+            if (selectedPath) setPath(selectedPath)
+        } catch (e) {
+            notify('파일을 열 수 없습니다.', 'error')
+        }
+    }, [notify])
 
-        if (isAzureModel) {
-            if (isFieldEmpty(name) || isFieldEmpty(main) || isFieldEmpty(apiKey) ||
-                (azureMode === 'endpoint' && isFieldEmpty(endpoint)) ||
-                (azureMode === 'region' && isFieldEmpty(region))
-        ) {
-                notify("모든 필드를 입력해주세요!", 'info');
-                return;
-            }
-        } else {
-            if (isFieldEmpty(name) || isFieldEmpty(main) || isFieldEmpty(library) || isFieldEmpty(device) || isFieldEmpty(path)) {
-                notify("모든 필드를 입력해주세요!", 'info');
-                return;
-            }
+    const handleSelectModelFromHuggingface = useCallback((model: HuggingFaceModel) => {
+        setMain('Whisper')
+        setName(model.cardData?.pretty_name || model.id)
+        setLibrary('Transformer')
+        setDevice('CPU')
+        setLanguage('ko')
+        setPath(`/models/${model.id}`)
+    }, [])
+
+    const handleSubmit = useCallback(async () => {
+        if (!canSubmit) {
+            notify('모든 필드를 올바르게 입력해주세요.', 'info')
+            return
         }
 
         setIsLoading(true)
@@ -135,29 +180,29 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
         try {
             if (isAzureModel) {
                 const azureBody = {
-                    name,
-                    type: main,
-                    framework: "Azure",
-                    device: "API",
+                    name: name.trim(),
+                    type: main.trim(),
+                    framework: 'Azure',
+                    device: 'API',
                     language,
-                    endpoint: azureMode === 'endpoint' ? endpoint : '',
+                    endpoint: azureMode === 'endpoint' ? endpoint.trim() : '',
                     region: azureMode === 'region' ? region : '',
-                    apiKey,
-                    path: "",
+                    apiKey: apiKey.trim(),
+                    path: '',
                 }
 
                 await axios.post("http://localhost:8000/asr/models/register", azureBody)
             } else {
-                const whisperBody = {
-                    name,
-                    type: main,
+                const localBody = {
+                    name: name.trim(),
+                    type: main.trim(),
                     framework: library,
                     device,
                     language,
                     path,
                 }
 
-                await axios.post("http://localhost:8000/asr/models/register", whisperBody)
+                await axios.post("http://localhost:8000/asr/models/register", localBody)
             }
 
             notify("모델을 등록했습니다.", 'success')
@@ -170,40 +215,50 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
         } finally {
             setIsLoading(false)
         }
-    }
-
-    const handleBrowseModelPath = async () => {
-        const selectedPath = await window.electronAPI.openModelDialog()
-        if (selectedPath) setPath(selectedPath)
-    }
-
-    const handleSelectModelFromHuggingface = (model: HuggingFaceModel) => {
-        setMain('Whisper')
-        setName(model.cardData?.pretty_name || model.id)
-        setLibrary('Transformer')
-        setDevice('CPU')
-        setLanguage('ko')
-        setPath(`/models/${model.id}`)
-    }
+    }, [canSubmit, isAzureModel, name, main, library, device, language, path, azureMode, endpoint, region, apiKey, notify, resetForm, onClose, onModelAdded])
 
     useEffect(() => {
-        if (open) {
+        if (isFormOpen) {
             setShowHuggingfaceDrawer(false)
         }
-    }, [open])
+    }, [isFormOpen])
+
+    useEffect(() => {
+        if (!isFormOpen) return
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                resetForm()
+                onClose()
+            }
+            if (e.key === 'Enter') {
+                if (canSubmit && !isLoading) {
+                    e.preventDefault()
+                    handleSubmit()
+                }
+            }
+        }
+        window.addEventListener('keydown', onKey)
+        return () => window.removeEventListener('keydown', onKey)
+    }, [isFormOpen, canSubmit, isLoading, handleSubmit, onClose, resetForm])
 
     if (!open) return null
 
     return (
         <>
-            <div className="fixed inset-0 bg-black/20 text-black flex justify-center items-center z-[9999]">
-                <div className="bg-white p-6 rounded-lg w-[400px] shadow-lg">
+            <div
+                className="fixed inset-0 bg-black/20 text-black flex justify-center items-center z-[9999]"
+                onMouseDown={() => { resetForm(); onClose() }}
+            >
+                <div
+                    className="bg-white p-6 rounded-lg w-[400px] shadow-lg"
+                    onMouseDown={(e) => e.stopPropagation()}
+                >
                     <h3 className="text-lg font-MapoPeacefull font-semibold mb-4">모델 추가</h3>
         
                     <div className="space-y-3">
                         <CreatableSelect 
                             options={modelOptions} 
-                            value={modelOptions.find(option => option.value === main)}
+                            value={modelOptions.find((o) => o.value === main) ?? (main ? { value: main, label: main } : null)}
                             onChange={option => setMain(option?.value || "")} 
                             placeholder="모델 형식 선택 / 입력"
                             isClearable
@@ -215,6 +270,7 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
                             onChange={e => setName(e.target.value)} 
                             className="input" 
                             placeholder={!isAzureModel ? "모델 이름 (예: Whisper-Small 등 사용자 지정)" : "모델 이름 (예: Azure Main 등 사용자 지정)"}
+                            autoFocus
                         />
 
                         <AnimatePresence mode='wait'>
@@ -229,7 +285,7 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
                                 >
                                     <Select 
                                         options={libraryOptions} 
-                                        value={libraryOptions.find(option => option.value === library)}
+                                        value={libraryOptions.find((o) => o.value === library) || null}
                                         onChange={option => setLibrary(option?.value || "")} 
                                         placeholder="라이브러리 선택"
                                         noOptionsMessage={() => "옵션이 없습니다!"}
@@ -237,7 +293,7 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
                     
                                     <Select 
                                         options={deviceOptions} 
-                                        value={deviceOptions.find(option => option.value === device)}
+                                        value={deviceOptions.find((o) => o.value === device) || null}
                                         onChange={option => setDevice(option?.value || "")} 
                                         placeholder="장치 선택"
                                         noOptionsMessage={() => "장치가 없습니다!"}
@@ -245,7 +301,7 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
                     
                                     <Select 
                                         options={languageOptions} 
-                                        value={languageOptions.find(option => option.value === language)}
+                                        value={languageOptions.find((o) => o.value === language) || null}
                                         onChange={option => setLanguage(option?.value || "")} 
                                         placeholder="언어 선택"
                                     />
@@ -283,33 +339,50 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
                                     transition={{ duration: 0.25 }}
                                     className="space-y-3"
                                 >
-                                    <input
-                                        value={apiKey}
-                                        onChange={e => setApiKey(e.target.value)}
-                                        className="input"
-                                        type="password"
-                                        placeholder="API Key 입력"
-                                    />
+                                    <div className='relative'>
+                                        <input
+                                            value={apiKey}
+                                            onChange={e => setApiKey(e.target.value)}
+                                            className="input"
+                                            type={showApi ? 'text' : 'password'}
+                                            placeholder="API Key 입력"
+                                        />
+                                        <button
+                                            type='button'
+                                            className='absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-gray-100'
+                                            onClick={() => setShowApi((v) => !v)}
+                                            aria-label={showApi ? 'API Key 숨기기' : 'API Key 표시'}
+                                        >
+                                            {showApi ? <EyeOff className='w-4 h-4' /> : <Eye className='w-4 h-4' />}
+                                        </button>
+                                    </div>
+
                                     {azureMode === 'endpoint' ? (
                                         <input
                                             value={endpoint}
                                             onChange={e => setEndpoint(e.target.value)}
-                                            className="input"
-                                            placeholder="엔드포인트 URL 입력"
+                                            className={clsx('input', !endpointValid && 'border-red-300 focus:border-red-400')}
+                                            placeholder="엔드포인트 URL 입력 (https://...)"
                                         />
                                     ) : (
                                         <Select
                                             options={regionOptions}
-                                            value={regionOptions.find(opt => opt.value === region)}
-                                            onChange={option => setRegion(option?.value || '')}
+                                            value={regionOptions.find((opt) => opt.value === region) || null}
+                                            onChange={(opt) => setRegion(opt?.value || '')}
                                             placeholder="리전 선택"
                                         />
                                     )}
+
                                     <div className="flex items-center gap-3">
                                         <span className="text-sm">엔드포인트</span>
                                         <label className="relative inline-flex items-center cursor-pointer">
-                                            <input type="checkbox" checked={azureMode === 'region'} onChange={() => setAzureMode(azureMode === 'endpoint' ? 'region' : 'endpoint')} className="sr-only peer" />
-                                            <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 dark:bg-gray-700 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                                            <input
+                                                type="checkbox"
+                                                checked={azureMode === 'region'}
+                                                onChange={() => setAzureMode(azureMode === 'endpoint' ? 'region' : 'endpoint')}
+                                                className="sr-only peer"
+                                            />
+                                            <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:bg-blue-600 peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 dark:bg-gray-700 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all" />
                                         </label>
                                         <span className="text-sm">리전</span>
                                     </div>
@@ -317,6 +390,7 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
                             )}
                         </AnimatePresence>
                     </div>
+
                     <div className="flex justify-end gap-2 mt-3">
                         <button
                             className="px-4 py-2 bg-gray-200 rounded font-MapoPeacefull hover:bg-gray-300"
@@ -329,11 +403,13 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
                             취소
                         </button>
                         <button
-                            className={clsx("px-4 py-2 bg-blue-500 text-white rounded font-MapoPeacefull hover:bg-blue-600", {
-                                'opacity-50 cursor-not-allowed': isLoading
-                            })}
+                            className={clsx(
+                                'px-4 py-2 bg-blue-500 text-white rounded font-MapoPeacefull',
+                                canSubmit && !isLoading ? 'bg-blue-500 hover:bg-blue-600' : 'bg-blue-300 cursor-not-allowed opacity-70'
+                            )}
                             onClick={handleSubmit}
-                            disabled={isLoading}
+                            disabled={!canSubmit || isLoading}
+                            title={!canSubmit ? '필수 값을 입력하세요' : undefined}
                         >
                             {isLoading ? '등록 중...' : '모델 추가'}
                         </button>
@@ -341,7 +417,7 @@ export default function AddModel({ open, onClose, onModelAdded }: AddModelProps)
                 </div>
             </div>
 
-            {/* 🔥 HuggingFaceModelDrawer 연결 */}
+            {/* HuggingFaceModelDrawer 연결 */}
             {showHuggingFaceDrawer && (
                 <HuggingFaceModelDrawer
                     open={showHuggingFaceDrawer}

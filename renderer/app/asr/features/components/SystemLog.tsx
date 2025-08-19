@@ -4,210 +4,248 @@
 import styles from './SystemLog.module.css'
 import LogSearchBar from './LogSearchBar'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import clsx from 'clsx'
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import axios from 'axios'
 import { Clock, BarChart3, FileText } from 'lucide-react'
 import { LineChart, Line, ResponsiveContainer, XAxis, Tooltip as RechartsTooltip} from 'recharts'
 
-interface LogEntry {
+type LogType = 'PROCESS' | 'RESULT' | 'DB' | 'ERROR' | 'INFO'
+
+interface RawLog {
     timestamp: string
-    type: 'PROCESS' | 'RESULT' | 'DB' | 'ERROR' | 'INFO'
+    type: LogType
+    message: string
+}
+
+interface LogEntry {
+    iso: string
+    ts: number
+    display: string
+    type: LogType
     message: string
 }
 
 interface ChartDataPoint {
     name: string
-    cl: number // 현재 활동 로그
-    pl: number // 이전 활동 로그
+    cl: number // 현재
+    pl: number // 이전
+}
+
+const MAX_RENDERED_LOGS = 500
+const POLL_MS = 3000
+
+const formatDisplay = (iso: string) => {
+    const d = new Date(iso)
+    const yyyy = d.getFullYear()
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    const hh = String(d.getHours()).padStart(2, '0')
+    const mi = String(d.getMinutes()).padStart(2, '0')
+    const ss = String(d.getSeconds()).padStart(2, '0')
+    return `${yyyy}. ${mm}. ${dd}. ${hh}:${mi}:${ss}`
+}
+
+const toEntry = (log: RawLog): LogEntry => ({
+    iso: log.timestamp,
+    ts: new Date(log.timestamp).getTime(),
+    display: formatDisplay(log.timestamp),
+    type: log.type,
+    message: log.message
+})
+
+const scoreOf = (t: LogType): number =>
+    t === 'ERROR' ? 4 : t === 'RESULT' ? 3 : t === 'DB' ? 2 : t === 'PROCESS' ? 2 : 1
+
+const buildChartPoints = (logs: LogEntry[]): ChartDataPoint[] => {
+    const now = Date.now()
+    const minutes: string[] = []
+    const minuteKey = (ms: number) => {
+        const d = new Date(ms)
+        return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    }
+
+    for (let i = 9; i >= 0; i--) {
+        minutes.push(minuteKey(now - i * 60_000)) // 10분 전부터 현재까지
+    }
+
+    const bucketScore: Record<string, number> = {}
+    for (const m of minutes) bucketScore[m] = 0
+
+    for (const l of logs) {
+        const k = minuteKey(l.ts)
+        if (k in bucketScore) bucketScore[k] += scoreOf(l.type)
+    }
+
+    const pts: ChartDataPoint[] = []
+    let prev = 0
+    for (const m of minutes) {
+        const curr = bucketScore[m] ?? 0
+        pts.push({ name: m, cl: curr, pl: prev })
+        prev = curr
+    }
+
+    return pts
 }
 
 export default function SystemLog() {
     const [logs, setLogs] = useState<LogEntry[]>([])
-    const mountTime = useMemo(() => new Date().toISOString(), [])
-
+    const [filteredLogs, setFilteredLogs] = useState<LogEntry[]>([])
     const [chartData, setChartData] = useState<ChartDataPoint[]>([])
-    const [now, setNow] = useState('')
-    const logEndRef = useRef<HTMLDivElement>(null)
-    const prevCountRef = useRef<number>(0)
+    const [nowStr, setNowStr] = useState('')
 
-    const [filterTypes, setFilterTypes] = useState<LogEntry['type'][]>([])
+    const [filterTypes, setFilterTypes] = useState<LogType[]>([])
     const [searchQuery, setSearchQuery] = useState('')
     const [suggestions, setSuggestions] = useState<string[]>([])
-    const [filteredLogs, setFilteredLogs] = useState<LogEntry[]>([])
     const [isSearching, setIsSearching] = useState(false)
+
+    const mountIso = useMemo(() => new Date().toISOString(), [])
+    const logEndRef = useRef<HTMLDivElement>(null)
+    const prevCountRef = useRef<number>(0)
+    const pollAbortRef = useRef<AbortController | null>(null)
+    const suggestAbortRef = useRef<AbortController | null>(null)
+    const searchAbortRef = useRef<AbortController | null>(null)
+    const pollingRef = useRef<number | null>(null)
     
-    const toggleFilter = (type: LogEntry['type']) => {
-        setFilterTypes(prev =>
-            prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
-        )
-    }
+    const toggleFilter = useCallback((t: LogType) => {
+        setFilterTypes((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]))
+    }, [])
 
     const displayedLogs = useMemo(() => {
         const base = searchQuery ? filteredLogs : logs
-        return base.filter(
-            log => (filterTypes.length === 0 || filterTypes.includes(log.type)) &&
-            log.message.toLowerCase().includes(searchQuery.toLowerCase())
-        )
+        const withType = filterTypes.length === 0 ? base : base.filter((l) => filterTypes.includes(l.type))
+        const withQuery = searchQuery
+            ? withType.filter((l) => l.message.toLowerCase().includes(searchQuery.toLowerCase()))
+            : withType
+        return withQuery.slice(-MAX_RENDERED_LOGS)
     }, [logs, filteredLogs, searchQuery, filterTypes])
-
-    function formatDate(raw: string) {
-        const d = new Date(raw)
-        const yyyy = d.getFullYear()
-        const mm = String(d.getMonth() + 1).padStart(2, '0')
-        const dd = String(d.getDate()).padStart(2, '0')
-        const hh = String(d.getHours()).padStart(2, '0')
-        const mi = String(d.getMinutes()).padStart(2, '0')
-        const ss = String(d.getSeconds()).padStart(2, '0')
-    
-        return `${yyyy}. ${mm}. ${dd}. ${hh}:${mi}:${ss}`
-    }
-    
-    function calculateScore(logs: LogEntry[]): number {
-        let score = 0
-        for (const log of logs) {
-            switch (log.type) {
-                case 'ERROR': score += 4; break
-                case 'RESULT': score += 3; break
-                case 'DB': score += 2; break
-                case 'PROCESS': score += 2; break
-                case 'INFO': score += 1; break
-            }
-        }
-        return score
-    }
 
     useEffect(() => {
         if (!searchQuery.trim()) {
             setSuggestions([])
             return
         }
+        suggestAbortRef.current?.abort()
+        const ctrl = new AbortController()
+        suggestAbortRef.current = ctrl
+
         const id = setTimeout(async () => {
             try {
-                const res = await axios.get('http://localhost:8000/asr/log-suggestions',
-                    { params: { q: searchQuery } }
-                )
-                setSuggestions(res.data)
-            } catch (e) {
-                setSuggestions([])
+                const res = await axios.get('http://localhost:8000/asr/log-suggestions', {
+                    params: { q: searchQuery },
+                    signal: ctrl.signal,
+                })
+                setSuggestions(Array.isArray(res.data) ? res.data : [])
+            } catch {
+                if (!ctrl.signal.aborted) setSuggestions([])
             }
-        }, 300)
-        return () => clearTimeout(id)
-    }, [searchQuery])
+        }, 250)
 
-    const fetchLogs = async (q: string) => {
-        const res = await axios.get('http://localhost:8000/asr/logs', {
-            params: { query: q }
-        })
-        const formatted = res.data.map((log: any) => ({
-            timestamp: formatDate(log.timestamp),
-            type: log.type,
-            message: log.message
-        }))
-        setFilteredLogs(formatted)
-    }
-    const handleSearch = () => fetchLogs(searchQuery)
-    const handleSelect = (kw: string) => {
-        setSearchQuery(kw)
-        setTimeout(() => fetchLogs(kw), 0)
-    }
-
-    useEffect(() => {
-        if (searchQuery.trim()) return () => {}
-    
-        const fetchAll = async () => {
-            try {
-                const res = await axios.get('http://localhost:8000/asr/logs',
-                    {
-                        params: { limit: 100, since: mountTime }
-                    }
-                )
-                const raw: LogEntry[] = res.data.reverse()
-                const filtered = raw.filter(l => new Date(l.timestamp) >= new Date(mountTime))
-                const formatted = filtered.map((log: any) => ({
-                    timestamp: formatDate(log.timestamp),
-                    type: log.type,
-                    message: log.message
-                }))
-                setLogs(formatted)
-            } catch (e) {
-                setLogs([])
-            }
+        return () => {
+            clearTimeout(id)
+            ctrl.abort()
         }
-    
-        fetchAll()
-        const iv = setInterval(fetchAll, 3000)
-        return () => clearInterval(iv)
     }, [searchQuery])
-    
+
+    const fetchLogsByQuery = useCallback(async (q: string) => {
+        searchAbortRef.current?.abort()
+        const ctrl = new AbortController()
+        searchAbortRef.current = ctrl
+        setIsSearching(true)
+        
+        try {
+            const res = await axios.get('http://localhost:8000/asr/logs', {
+                params: { query: q },
+                signal: ctrl.signal,
+            })
+            const list: LogEntry[] = (res.data as RawLog[]).map(toEntry)
+            setFilteredLogs(list)
+        } catch {
+            if (!ctrl.signal.aborted) setFilterTypes([])
+        } finally {
+            if (!ctrl.signal.aborted) setIsSearching(false)
+        }
+    }, [])
+
+    const handleSearch = useCallback(() => {
+        if (searchQuery.trim()) fetchLogsByQuery(searchQuery.trim())
+    }, [fetchLogsByQuery, searchQuery])
+
+    const handleSelect = useCallback(
+        (kw: string) => {
+            setSearchQuery(kw)
+            fetchLogsByQuery(kw)
+        },
+        [fetchLogsByQuery]
+    )
+
+    const fetchAll = useCallback(async (signal: AbortSignal) => {
+        const res = await axios.get('http://localhost:8000/asr/logs', {
+            params: { limit: 200, since: mountIso },
+            signal,
+        })
+        const raw = (res.data as RawLog[]).filter((l) => new Date(l.timestamp) >= new Date(mountIso))
+        const mapped = raw.map(toEntry)
+        setLogs(mapped)
+    }, [mountIso])
+
     useEffect(() => {
-        if (logs.length === 0) {
-            const pts: ChartDataPoint[] = []
-            const nowDate = new Date()
-            for (let i = 9; i >= 0; i--) {
-                const d = new Date(nowDate.getTime() - i * 60_000) // 1분 간격
-                const hh = String(d.getHours()).padStart(2, '0')
-                const mm = String(d.getMinutes()).padStart(2, '0')
-                pts.push({ name: `${hh}:${mm}`, cl: 0, pl: 0 })
+        if (searchQuery.trim()) {
+            if (pollingRef.current) {
+                window.clearInterval(pollingRef.current)
+                pollingRef.current = null
             }
-            setChartData(pts)
+            pollAbortRef.current?.abort()
             return
         }
 
-        const now = new Date()
-        const nowKey = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
+        pollAbortRef.current?.abort()
+        const ctrl = new AbortController()
+        pollAbortRef.current = ctrl
 
-        const buckets: Record<string, LogEntry[]> = {}
-        logs.forEach(log => {
-            const d = new Date(log.timestamp)
-            const key = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-            ;(buckets[key] ??= []).push(log)
-        })
+        const doPoll = () => fetchAll(ctrl.signal).catch(() => {})
+        doPoll()
+        const iv = window.setInterval(doPoll, POLL_MS)
+        pollingRef.current = iv
 
-        const thisScore = calculateScore(buckets[nowKey] ?? [])
-
-        setChartData(prev => {
-            const last = prev[prev.length - 1]
-            if (last?.name === nowKey) {
-                return prev.map(pt =>
-                    pt.name === nowKey ? { ...pt, cl: thisScore } : pt
-                )
+        return () => {
+            ctrl.abort()
+            if (pollingRef.current) {
+                window.clearInterval(pollingRef.current)
+                pollingRef.current = null
             }
+        }
+    }, [fetchAll, searchQuery])
 
-            const newPt: ChartDataPoint = {
-                name: nowKey,
-                cl: thisScore,
-                pl: last ? last.cl : 0
-            }
-
-            const next = [...prev, newPt]
-            if (next.length > 10) next.shift()
-            return next
-        })
+    useEffect(() => {
+        setChartData(buildChartPoints(logs))
     }, [logs])
 
     useEffect(() => {
-        const iv = setInterval(() => {
-            setNow(new Date().toLocaleString('ko-KR', {
+        const iv = window.setInterval(() => {
+            setNowStr(
+                new Date().toLocaleString('ko-KR', {
                 timeZone: 'Asia/Seoul',
-                year: 'numeric', month: '2-digit',
-                day: '2-digit', hour: '2-digit',
-                minute: '2-digit', second: '2-digit',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
                 hour12: false,
-            }))
+                })
+            )
         }, 1000)
-        return () => clearInterval(iv)
+        return () => window.clearInterval(iv)
     }, [])
-    
+
     useEffect(() => {
         const prev = prevCountRef.current
         const curr = displayedLogs.length
-        if (curr > prev && logEndRef.current) {
+        if (curr > curr && logEndRef.current) {
             const container = logEndRef.current.closest(`.${styles.scrollContainer}`)
             if (container) {
-                container.scrollTo({
-                    top: container.scrollHeight,
-                    behavior: 'smooth',
-                })
+                container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' })
             }
         }
         prevCountRef.current = curr
@@ -222,8 +260,10 @@ export default function SystemLog() {
                 suggestions={suggestions}
                 onSelect={handleSelect}
             />
+
             <div className='relative'>
                 <div className="w-[640px] h-[320px] mt-5 bg-white/50 backdrop-blur-md border border-white/10 shadow-[inset_0_4px_12px_rgba(0,0,0,0.08)] rounded-2xl px-6 py-5 transition-all overflow-hidden flex flex-col">
+                    {/* 헤더 */}
                     <div className="shrink-0 flex justify-between items-center mb-2">
                         <div className="flex p-3 items-center gap-4">
                             <h3 className="text-lg text-[27px] text-black">Log</h3>
@@ -231,17 +271,18 @@ export default function SystemLog() {
                                 +{displayedLogs.length}
                             </span>
                         </div>
+
                         <div className="flex items-center gap-3">
                             <Clock className="w-8 h-8 text-black" />
                             <div className="text-xs text-black">
                                 <div className="font-medium text-[14px]">Time</div>
-                                <div className="font-TheCircleM text-[12px] tracking-[-0.035em]">{now}</div>
+                                <div className="font-TheCircleM text-[12px] tracking-[-0.035em]">{nowStr}</div>
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
                             <BarChart3 className="w-7.5 h-7.5 text-black" />
                             <div>
-                                <span className="text-xs text-black text-[13px]">Activities</span>
+                                <span className="text-black text-[13px]">Activities</span>
                                 <div className="w-[120px] h-[36px]">
                                     <ResponsiveContainer width="100%" height={36}>
                                         <LineChart data={chartData}>
@@ -265,7 +306,7 @@ export default function SystemLog() {
                     </div>
 
                     <div className="shrink-0 flex gap-2 px-3 mb-2">
-                        {['INFO', 'ERROR', 'PROCESS', 'DB', 'RESULT'].map((type) => (
+                        {(['INFO', 'ERROR', 'PROCESS', 'DB', 'RESULT'] as LogType[]).map((type) => (
                             <button
                                 key={type}
                                 onClick={() => toggleFilter(type as any)}
@@ -282,25 +323,32 @@ export default function SystemLog() {
                     
                     <div className="flex-1 min-h-0 bg-black text-white rounded-[30px] overflow-hidden">
                         <div className={`${styles.scrollContainer} h-full`}>
-                            {displayedLogs.length === 0 ? (
+                            {isSearching ? (
+                                <div className='px-6 py-4 space-y-2'>
+                                    {Array.from({ length: 8 }).map((_, i) => (
+                                        <div key={i} className="h-[14px] bg-neutral-700 rounded animate-pulse w-[80%]" />
+                                    ))}
+                                </div>
+                            ) : displayedLogs.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-full space-y-2">
                                     <FileText className="w-12 h-12 text-gray-500" />
                                     <div className="text-gray-400 text-sm">No logs to show.</div>
                                     <div className="text-gray-600 text-xs">
-                                        로그가 없습니다. 필터를 해제하거나 새로운 로그를 기다려보세요.
+                                        필터를 해제하거나 새로운 로그를 기다려보세요 =)
                                     </div>
                                 </div>
                             ) : (
-                                <div className={`${styles.logTextArea} px-6 py-4 text-sm font-DungGeunMo space-y-3`} style={{ userSelect: 'text' }}>
-                                    {isSearching
-                                        ? [...Array(6)].map((_, i) => (
-                                            <div key={i} className="h-[14px] bg-neutral-700 rounded animate-pulse w-[80%]" />
-                                        ))
-                                        : displayedLogs.map((log, idx) => (
-                                            <div key={idx}>
-                                                [{log.timestamp}] [{log.type}] {log.message}
-                                            </div>
-                                        ))}
+                                <div className={`${styles.logTextArea} px-6 py-4 text-[12.5px] font-DungGeunMo space-y-2`} style={{ userSelect: 'text' }}>
+                                    {displayedLogs.map((log, idx) => (
+                                        <div
+                                            key={`${log.ts}-${idx}`}
+                                            className={styles.logLine}
+                                        >
+                                            <span className={styles.time}>[{log.display}]</span>{' '}
+                                            <span className={`${styles.badge} ${styles[`t_${log.type}`]}`}>{log.type}</span>{' '}
+                                            <span className={styles.msg}>{log.message}</span>
+                                        </div>
+                                    ))}
                                     <div ref={logEndRef} />
                                 </div>
                             )}

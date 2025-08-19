@@ -1,9 +1,7 @@
 /* app/asr/features/components/SystemLog.module.css */
 
-/* 기존 .logTextArea (텍스트 영역) 스타일 */
 .logTextArea {
     user-select: text !important;
-    /* 여기에 padding 은 이미 JSX 에서 주고 있으므로, 추가 조정은 필요 시만 */
 }
 
 .scrollContainer {
@@ -13,7 +11,6 @@
     scrollbar-width: thin;
     scrollbar-color: #52525b transparent;
 }
-
 .scrollContainer::-webkit-scrollbar {
     width: 8px;
 }
@@ -22,11 +19,55 @@
     border-radius: 4px;
     border: 2px solid transparent;
     background-clip: content-box;
+    transition: background-color 0.2s ease-in-out;
 }
 .scrollContainer::-webkit-scrollbar-thumb:hover {
     background-color: #414146;
-    transition: background-color 0.2s ease-in-out;
 }
 .scrollContainer::-webkit-scrollbar-track {
     background: transparent;
+}
+
+.logLine {
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    word-break: break-word;
+}
+.time {
+    color: #a3a3a3;
+}
+.badge {
+    display: inline-block;
+    padding: 0 6px;
+    border-radius: 9999px;
+    font-size: 11px;
+    line-height: 18px;
+    vertical-align: baseline;
+    margin: 0 4px;
+    background: #27272a;
+    color: #e5e7eb;
+}
+.msg {
+    color: #e5e7eb;
+}
+
+.t_INFO {
+    background: rgba(99, 102, 241, 0.18); /* indigo */
+    color: #c7d2fe;
+}
+.t_ERROR {
+    background: rgba(239, 68, 68, 0.22); /* red */
+    color: #fecaca;
+}
+.t_PROCESS {
+    background: rgba(16, 185, 129, 0.20); /* emerald */
+    color: #a7f3d0;
+}
+.t_DB {
+    background: rgba(234, 179, 8, 0.22); /* amber */
+    color: #fde68a;
+}
+.t_RESULT {
+    background: rgba(59, 130, 246, 0.20); /* blue */
+    color: #bfdbfe;
 }

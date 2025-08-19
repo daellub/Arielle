@@ -1,11 +1,11 @@
 // app/asr/features/components/DownloadPanel.tsx
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import { useDownload, DownloadTask } from './DownloadContext'
 import {
     X,
-    Download,
+    Download as DownloadIcon,
     CheckCircle2,
     AlertTriangle,
     Hourglass,
@@ -13,32 +13,55 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
 import clsx from 'clsx'
-
 import { useNotificationStore } from '@/app/store/useNotificationStore'
 import styles from './DownloadPanel.module.css'
 
+function StatusIcon({ status }: { status: DownloadTask['status'] }) {
+    switch (status) {
+        case 'done':        return <CheckCircle2 className="text-green-500 w-4 h-4" />
+        case 'in-progress': return <Hourglass className="text-yellow-500 w-4 h-4 animate-pulse" />
+        case 'error':       return <AlertTriangle className="text-red-500 w-4 h-4" />
+        case 'canceled':    return <X className="text-gray-400 w-4 h-4" />
+        default:            return <DownloadIcon className="text-gray-400 w-4 h-4" />
+    }
+}
+
 export function DownloadPanel({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
-    const { tasks, removeTask } = useDownload()
-    const [isElectronReady, setElectronReady] = useState(false)
+    const { tasks, removeTask, cancelIfRunning } = useDownload()
     const notify = useNotificationStore((s) => s.show)
 
-    useEffect(() => {
-        const ready = typeof window !== 'undefined' &&
-            'electronAPI' in window &&
-            typeof window.electronAPI?.openPath === 'function'
-
-        setElectronReady(ready)
+    const electronAPI = useMemo(() => {
+        if (typeof window === 'undefined') return undefined as any
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        return (window as any).electronAPI
     }, [])
+    const isElectronReady = !!(electronAPI?.openPath && electronAPI?.copyToClipboard)
+
+    // ESC 키로 창 닫기
+    useEffect(() => {
+        if (!isOpen) return
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose()
+        }
+        window.addEventListener('keydown', onKey)
+        return () => window.removeEventListener('keydown', onKey)
+    }, [isOpen, onClose])
 
     if (!isOpen) return null
 
-    const getStatusIcon = (status: string) => {
-        switch (status) {
-            case 'done': return <CheckCircle2 className="text-green-500 w-4 h-4" />
-            case 'in-progress': return <Hourglass className="text-yellow-500 w-4 h-4 animate-pulse" />
-            case 'error': return <AlertTriangle className="text-red-500 w-4 h-4" />
-            case 'canceled': return <X className="text-gray-400 w-4 h-4" />
-            default: return <Download className="text-gray-400 w-4 h-4" />
+    const handleCopyPath = async (path?: string) => {
+        if (!path) return notify('경로를 찾을 수 없습니다.', 'error')
+        try {
+            if (isElectronReady) {
+                electronAPI.copyToClipboard(path)
+            } else if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(path)
+            } else {
+                throw new Error('클립보드 API를 지원하지 않습니다.')
+            }
+            notify('경로가 클립보드에 복사되었습니다.', 'success')
+        } catch {
+            notify('경로 복사에 실패했습니다.', 'error')
         }
     }
 
@@ -57,6 +80,8 @@ export function DownloadPanel({ isOpen, onClose }: { isOpen: boolean, onClose: (
                     <X
                         className="w-4 h-4 p-[2px] text-gray-500 hover:text-gray-800 hover:bg-gray-200 rounded-full transition cursor-pointer"
                         onClick={onClose}
+                        aria-label="닫기"
+                        role="button"
                     />
                 </div>
 
@@ -81,7 +106,7 @@ export function DownloadPanel({ isOpen, onClose }: { isOpen: boolean, onClose: (
                                 {/* 파일명 + 취소 */}
                                 <div className="flex justify-between items-start">
                                     <div className="flex items-center gap-2">
-                                        {getStatusIcon(task.status)}
+                                        <StatusIcon status={task.status} />
                                         <div>
                                             <div className="text-sm font-medium text-gray-800">
                                                 {task.filename}
@@ -98,15 +123,9 @@ export function DownloadPanel({ isOpen, onClose }: { isOpen: boolean, onClose: (
                                             <>
                                                 {task.status === 'done' && task.path && (
                                                     <button
-                                                        onClick={() => {
-                                                            if (task.path) {
-                                                                window.electronAPI.copyToClipboard(task.path!)
-                                                                notify('경로가 복사되었습니다.', 'success')
-                                                            } else {
-                                                                notify('경로를 찾을 수 없습니다.', 'error')
-                                                            }
-                                                        }}
-                                                        title="Copy path"
+                                                        onClick={() => handleCopyPath(task.path)}
+                                                        title="경로 복사"
+                                                        aria-label="경로 복사"
                                                     >
                                                         <ClipboardCopy className="w-4 h-4 text-gray-400 hover:text-black" />
                                                     </button>
@@ -115,7 +134,8 @@ export function DownloadPanel({ isOpen, onClose }: { isOpen: boolean, onClose: (
                                                     onClick={() => 
                                                         removeTask(task.id)
                                                     }
-                                                    title='목록에서 제거'
+                                                    title="목록에서 제거"
+                                                    aria-label="목록에서 제거"
                                                 >
                                                     <X className="w-4 h-4 text-gray-400 hover:text-black" />
                                                 </button>
@@ -125,8 +145,8 @@ export function DownloadPanel({ isOpen, onClose }: { isOpen: boolean, onClose: (
                                         {task.status === 'in-progress' && (
                                             <button
                                                 onClick={async () => {
-                                                    task.cancelToken?.cancel('사용자 취소')
-                                                    removeTask(task.id)
+                                                    // 로컬 취소 + 서버 취소
+                                                    cancelIfRunning(task.id)
                                                     try {
                                                         await fetch('http://localhost:8000/api/models/cancel-download', {
                                                             method: 'POST',
@@ -136,9 +156,10 @@ export function DownloadPanel({ isOpen, onClose }: { isOpen: boolean, onClose: (
                                                     } catch (err) {
                                                         console.warn('백엔드 취소 실패:', err)
                                                     }
-                                                    notify(`${task.filename} 다운로드 취소됨`, 'info')
+                                                    // notify(`${task.filename} 다운로드 취소됨`, 'info')
                                                 }}
                                                 title="다운로드 취소"
+                                                aria-label="다운로드 취소"
                                             >
                                                 <X className="w-4 h-4 text-red-400 hover:text-red-600" />
                                             </button>
@@ -147,15 +168,15 @@ export function DownloadPanel({ isOpen, onClose }: { isOpen: boolean, onClose: (
                                 </div>
 
                                 {/* 프로그레스 바 */}
-                                <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
+                                <div className="h-1 bg-gray-200 rounded-full overflow-hidden" aria-hidden>
                                     <div
                                         className="h-full rounded-full transition-all duration-300"
                                         style={{
-                                        width: `${task.progress}%`,
-                                        backgroundColor:
-                                            task.status === 'done' ? '#22c55e' :
-                                            task.status === 'in-progress' ? '#3b82f6' :
-                                            task.status === 'error' ? '#ef4444' : '#9ca3af'
+                                            width: `${task.progress}%`,
+                                            backgroundColor:
+                                                task.status === 'done' ? '#22c55e' :
+                                                task.status === 'in-progress' ? '#3b82f6' :
+                                                task.status === 'error' ? '#ef4444' : '#9ca3af'
                                         }}
                                     />
                                 </div>
@@ -165,27 +186,27 @@ export function DownloadPanel({ isOpen, onClose }: { isOpen: boolean, onClose: (
                                     <div className="flex justify-between items-center text-xs text-gray-500">
                                         <div>
                                             {task.status === 'in-progress'
-                                            ? `${task.progress}% 다운로드 중`
-                                            : task.status === 'done'
-                                            ? '다운로드 완료'
-                                            : task.status === 'canceled'
-                                            ? '다운로드 취소됨'
-                                            : '오류'}
+                                                ? `${task.progress}% 다운로드 중`
+                                                : task.status === 'done'
+                                                ? '다운로드 완료'
+                                                : task.status === 'canceled'
+                                                ? '다운로드 취소됨'
+                                                : '오류'}
                                         </div>
 
                                         {task.status === 'done' && (
                                             <span className="ml-2 bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-medium text-[11px]">
-                                            완료
+                                                완료
                                             </span>
                                         )}
                                     </div>
 
                                     {task.status === 'done' && task.sizeMB !== undefined && (
                                         <div>
-                                        총 크기:{' '}
-                                        {task.sizeMB >= 1024
-                                            ? `${(task.sizeMB / 1024).toFixed(2)} GB`
-                                            : `${task.sizeMB.toFixed(2)} MB`}
+                                            총 크기:{' '}
+                                            {task.sizeMB >= 1024
+                                                ? `${(task.sizeMB / 1024).toFixed(2)} GB`
+                                                : `${task.sizeMB.toFixed(2)} MB`}
                                         </div>
                                     )}
 
@@ -201,8 +222,13 @@ export function DownloadPanel({ isOpen, onClose }: { isOpen: boolean, onClose: (
 
                                 {task.path && task.status === 'done' && (
                                     <button
-                                        onClick={() => window.electronAPI.openPath(task.path!)}
-                                        className="text-[12px] text-indigo-500 hover:underline mt-1"
+                                        onClick={() => {
+                                            if (isElectronReady) {
+                                                electronAPI.openPath(task.path!)
+                                            } else {
+                                                notify('Electron 환경이 아니라 경로 열기를 사용할 수 없습니다.', 'error')
+                                            }
+                                        }}
                                     >
                                         Open in File Explorer
                                     </button>
@@ -217,7 +243,7 @@ export function DownloadPanel({ isOpen, onClose }: { isOpen: boolean, onClose: (
                 {isElectronReady ? (
                     <button
                         onClick={() => {
-                            window.electronAPI.openPath('C:\\Users\\zebri\\Desktop\\Dael\\Project\\arielle-app\\.hf_cache')
+                            window.electronAPI.openPath('\\\\wsl.localhost\\Ubuntu-24.04\\home\\dael\\arielle_backend\\hf_cache')
                         }}
                         className="text-sm hover:underline text-indigo-500"
                     >

@@ -1,27 +1,39 @@
-// app/page.tsx
+// app/pages/ASRPage.tsx
 'use client'
 
 import axios from 'axios'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
+import dynamic from 'next/dynamic'
+import { Loader2 } from 'lucide-react'
 
+// 정적
 import Models from '@/app/asr/features/components/Models'
 import MicStatus from '@/app/asr/features/components/MicStatus'
 import LiveTranscriptPanel from '@/app/asr/features/components/LiveTranscriptPanel'
 import SystemStatus from '@/app/asr/features/components/Status'
 import SystemLog from '@/app/asr/features/components/SystemLog'
-import SettingsPanel from '@/app/asr/features/components/Settings'
-import AddModel from '@/app/asr/features/components/AddModel'
-import ModelInfoPopup from '@/app/asr/features/components/ModelInfoPopup'
-import ConfirmPopup from '@/app/asr/features/components/ConfirmPopup'
+import StatusFetcher from '@/app/asr/features/components/StatusFetcher'
+import ModalPortal from '@/app/components/ui/ModalPortal'
 
-import { useMicInputLevel } from '@/app/asr/features/hooks/useMicInputLevel'
-import { useMicStore } from '@/app/asr/features/store/useMicStore'
+// 훅 / 스토어 / 유틸리티
+import { DownloadProvider } from '@/app/asr/features/components/DownloadContext'
 import { fetchModels } from '@/app/asr/features/utils/api'
 import { Model } from '@/app/asr/features/types/Model'
-import StatusFetcher from '@/app/asr/features/components/StatusFetcher'
-import { DownloadPanel } from '@/app/asr/features/components/DownloadPanel'
-import { DownloadProvider } from '@/app/asr/features/components/DownloadContext'
 import { useNotificationStore } from '@/app/store/useNotificationStore'
+
+const LoadingFallback = () => (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30 backdrop-blur-sm">
+        <div className="flex flex-col items-center gap-3 px-6 py-5 rounded-lg bg-white shadow-md">
+            <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+            <span className="text-gray-700 font-medium">Loading…</span>
+        </div>
+    </div>
+)
+
+const SettingsPanel  = dynamic(() => import('@/app/asr/features/components/Settings'), { ssr: false, loading: LoadingFallback })
+const AddModel       = dynamic(() => import('@/app/asr/features/components/AddModel'), { ssr: false, loading: LoadingFallback })
+const ModelInfoPopup = dynamic(() => import('@/app/asr/features/components/ModelInfoPopup'), { ssr: false, loading: LoadingFallback })
+const ConfirmPopup   = dynamic(() => import('@/app/asr/features/components/ConfirmPopup'), { ssr: false, loading: LoadingFallback })
 
 import styles from './ASRPage.module.css'
 
@@ -32,13 +44,34 @@ interface Sparkle {
     duration: string
 }
 
-export default function Home() {
-    const { 
-        deviceId,
-    } = useMicStore()
-    
-    const inputLevel = useMicInputLevel(deviceId)
+const MESSAGE_MAP: Record<'refresh'|'add'|'delete'|'manual'|'load'|'unload', string> = {
+    refresh: '모델 상태를 갱신했습니다.',
+    add:     '모델을 추가했습니다.',
+    delete:  '모델을 삭제했습니다.',
+    manual:  '모델 목록을 불러왔습니다.',
+    load:    '모델을 로드했습니다.',
+    unload:  '모델을 언로드했습니다.',
+}
 
+function shallowEqualModels(a: Model[], b: Model[]) {
+    if (a === b) return true
+    if (a.length !== b.length) return false
+    for (let i = 0; i < a.length; i++) {
+        const x = a[i], y = b[i]
+        if (!x || !y) return false
+        if (
+            x.id !== y.id ||
+            x.status !== y.status ||
+            x.name !== y.name ||
+            x.framework !== y.framework ||
+            x.language !== y.language ||
+            x.latency !== y.latency
+        ) return false
+    }
+    return true
+}
+
+export default function ASRPage() {
     const [models, setModels] = useState<Model[]>([])
 
     const [showSettings, setShowSettings] = useState(false)
@@ -53,41 +86,50 @@ export default function Home() {
 
     const notify = useNotificationStore((s) => s.show)
 
-    const [sparkles, setSparkles] = useState<Sparkle[]>([])
+    const openSettings   = useCallback(() => setShowSettings(true), [])
+    const openAddModel   = useCallback(() => setShowAddModel(true), [])
+    const openModelInfo  = useCallback((model: Model) => { setInfoModel(model); setShowModelInfo(true) }, [])
+    const askDeleteModel = useCallback((model: Model) => { setModelToDelete(model); setShowDeleteConfirm(true) }, [])
 
-    
-    const refreshModels = async (context: 'refresh' | 'add' | 'delete' | 'manual' | 'load' | 'unload' = 'manual') => {
+    const [mounted, setMounted] = useState(false)
+    useEffect(() => { setMounted(true) }, [])
+
+    // 스파클 생성
+    const sparkles = useMemo<Sparkle[]>(
+        () => Array.from({ length: 20}, () => ({
+            top: `${Math.random() * 100}%`,
+            left: `${Math.random() * 100}%`,
+            delay: `${Math.random() * 5}s`,
+            duration: `${3 + Math.random() * 2}s`,
+        })),
+        [mounted]
+    )
+
+    const refreshModels = useCallback(async (
+        context: 'refresh' | 'add' | 'delete' | 'manual' | 'load' | 'unload' = 'refresh'
+    ) => {
         try {
             const data = await fetchModels()
-            setModels(data)
-
-            const messageMap = {
-                refresh: '모델 상태를 갱신했습니다.',
-                add: '모델을 추가했습니다.',
-                delete: '모델을 삭제했습니다.',
-                manual: '모델 목록을 불러왔습니다.',
-                load: '모델을 로드했습니다.',
-                unload: '모델을 언로드했습니다.',
-            }
-
-            notify(messageMap[context], 'info')
+            setModels(prev => shallowEqualModels(prev, data) ? prev : data)
+            useNotificationStore.getState().show(MESSAGE_MAP[context], 'info')
         } catch (err) {
             console.error("모델 목록 갱신 실패:", err)
-            notify('모델 목록을 불러오지 못했습니다.', 'error')
+            useNotificationStore.getState().show('모델 목록을 불러오지 못했습니다.', 'error')
         }
-    }
+    }, [])
 
-    const closeModelInfo = () => {
+    const closeModelInfo = useCallback(() => {
         setShowModelInfo(false)
         setTimeout(() => setInfoModel(null), 300)
-    }
+    }, [])
 
-    const deleteModel = async (modelId: string) => {
+    const deleteModel = useCallback(async (modelId: string) => {
         const res = await axios.delete(`http://localhost:8000/asr/models/${modelId}`)
         if (res.status !== 200) throw new Error("모델 삭제 실패")
-    }
+    }, [])
 
     useEffect(() => {
+        if (!isDownloadOpen) return
         const handleClickOutside = (e: MouseEvent) => {
             if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
                 setDownloadOpen(false)
@@ -95,46 +137,58 @@ export default function Home() {
         }
         document.addEventListener('mousedown', handleClickOutside)
         return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [])
+    }, [isDownloadOpen])
+
+    // 모델 최초 로드
+    const didLoadOnce = useRef(false)
+    useEffect(() => {
+        if (didLoadOnce.current) return
+        didLoadOnce.current = true
+
+        refreshModels('refresh')
+
+        // const ctrl = new AbortController()
+        // ;(async () => {
+        //     try {
+        //         const data = await fetchModels({ signal: ctrl.signal })
+        //         setModels(prev => shallowEqualModels(prev, data) ? prev : data)
+        //         notify(MESSAGE_MAP.refresh, 'info')
+        //     } catch (e: any) {
+        //         if (e?.name === 'CanceledError' || e?.name === 'AbortError' || e?.isCanceled) return
+        //         console.error('초기 모델 목록 로드 실패:', e)
+        //         notify('모델 목록을 불러오지 못했습니다.', 'error')
+        //     }
+        // })()
+
+        // return () => ctrl.abort()
+    }, [refreshModels])
+
+    const anyModalOpen = showSettings || showAddModel || showModelInfo || showDeleteConfirm
+    useEffect(() => {
+        if (anyModalOpen) document.body.classList.add('overflow-hidden')
+        else document.body.classList.remove('overflow-hidden')
+        return () => document.body.classList.remove('overflow-hidden')
+    }, [anyModalOpen])
 
     useEffect(() => {
-        setTimeout(() => {
-            useMicStore.getState().setRecordStatus('input') // TODO: 실시간 수정
-            useMicStore.getState().setProcessStatus('ready') // TODO: 실시간 수정
-        }, 1000)
-    }, [])
-
-    useEffect(() => {
-        refreshModels('manual')
-    }, [])
-
-    useEffect(() => {
-        const generated = Array.from({ length: 20 }, () => ({
-            top: `${Math.random() * 100}%`,
-            left: `${Math.random() * 100}%`,
-            delay: `${Math.random() * 5}s`,
-            duration: `${3 + Math.random() * 2}s`,
-        }))
-        setSparkles(generated)
+        const idle = (cb: () => void) =>
+            (window as any).requestIdleCallback ? (window as any).requestIdleCallback(cb, { timeout: 1500 }) : setTimeout(cb, 500)
+        idle(() => {
+            import('@/app/asr/features/components/Settings')
+            import('@/app/asr/features/components/AddModel')
+            import('@/app/asr/features/components/ModelInfoPopup')
+            import('@/app/asr/features/components/ConfirmPopup')
+            import('@/app/asr/features/components/DownloadPanel')
+        })
     }, [])
 
     return (
-        <DownloadProvider
-            onDownloadStart={(task) => {
-                setTimeout(() => {
-                    notify(`'${task.filename}' 다운로드 시작`, 'info')
-                }, 0)
-            }}
-            onDownloadComplete={(task) => {
-                setTimeout(() => {
-                    notify(`'${task.filename}' 다운로드 완료`, 'success')
-                }, 0)
-            }}
-        >
+        <DownloadProvider>
             <div className={styles.container + " w-full h-full flex flex-col overflow-hidden"}>
-                {sparkles.map((s, i) => (
+                {mounted && sparkles.map((s, i) => (
                     <div
                         key={i}
+                        role="presentation"
                         className={styles.sparkle}
                         style={{
                             top: s.top,
@@ -144,19 +198,20 @@ export default function Home() {
                         }}
                     />
                 ))}
-            
-                <div className="flex-1 overflow-y-auto relative z-10 flex p-6">
+
+                {/* 메인 콘텐츠 */}
+                <div
+                    className={
+                        "flex-1 overflow-y-auto relative z-10 flex p-6 transition-[opacity] duration-150 " +
+                        (anyModalOpen ? "pointer-events-none select-none opacity-70" : "opacity-100")
+                    }
+                    aria-hidden={anyModalOpen}
+                >
                     <Models 
-                        onOpenSettings={() => setShowSettings(true)} 
-                        onOpenAddModel={() => setShowAddModel(true)}
-                        onOpenModelInfo={(model) => {
-                            setInfoModel(model)
-                            setShowModelInfo(true)
-                        }}
-                        onRequestDelete={(model) => {
-                            setModelToDelete(model)
-                            setShowDeleteConfirm(true)
-                        }}
+                        onOpenSettings={openSettings}
+                        onOpenAddModel={openAddModel}
+                        onOpenModelInfo={openModelInfo}
+                        onRequestDelete={askDeleteModel}
                         models={models}
                         refreshModels={refreshModels}
                     />
@@ -169,80 +224,80 @@ export default function Home() {
                             <MicStatus />
                             <LiveTranscriptPanel />
                         </div>
-                        <div className='flex gap-2'>
+                        <div className='flex gap-4'>
                             <StatusFetcher />
                             <SystemStatus />
                             <SystemLog />
                         </div>
                     </div>
                 </div>
-
-                <div ref={panelRef}>
-                    <DownloadPanel isOpen={isDownloadOpen} onClose={() => setDownloadOpen(false)} />
-                </div>
             </div>
+            
+            {/* 모달 */}
             {showSettings && (
-                <>
-                    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[998]" />
+                <ModalPortal>
                     <div className="fixed inset-0 z-[9999]">
-                    <SettingsPanel onClose={() => setShowSettings(false)} />
+                        <div className="absolute inset-0 bg-black/30 backdrop-blur-sm pointer-events-auto" />
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="pointer-events-auto">
+                                <SettingsPanel onClose={() => setShowSettings(false)} />
+                            </div>
+                        </div>
                     </div>
-                </>
+                </ModalPortal>
             )}
             {showAddModel && (
-                <>
-                    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[998]" />
-                        <AddModel
-                        open={true}
-                        onClose={() => setShowAddModel(false)}
-                        onModelAdded={() => {
-                            setShowAddModel(false)
-                            refreshModels('add')
-                        }}
-                    />
-                </>
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[9999]">
+                        <div className="absolute inset-0 bg-black/30 backdrop-blur-sm pointer-events-auto" />
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="pointer-events-auto">
+                                <AddModel
+                                    open
+                                    onClose={() => setShowAddModel(false)}
+                                    onModelAdded={() => { setShowAddModel(false); refreshModels('add') }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </ModalPortal>
             )}
             {showModelInfo && infoModel && (
-                <>
-                    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[998]" />
+                <ModalPortal>
                     <div className="fixed inset-0 z-[9999]">
-                    <ModelInfoPopup
-                        model={infoModel}
-                        visible={true}
-                        onClose={closeModelInfo}
-                    />
+                        <div className="absolute inset-0 bg-black/20 backdrop-blur-sm pointer-events-auto" />
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="pointer-events-auto">
+                                <ModelInfoPopup model={infoModel} visible onClose={closeModelInfo} />
+                            </div>
+                        </div>
                     </div>
-                </>
+                </ModalPortal>
             )}
             {showDeleteConfirm && modelToDelete && (
-                <>
-                    <div className="fixed inset-0 bg-black/20 z-[998]" />
-                    <div className="fixed inset-0 z-[9999] flex justify-center items-center">
-                    <ConfirmPopup
-                        open={true}
-                        title="모델 삭제"
-                        description={`정말 "${modelToDelete.name}" 모델을 삭제하시겠습니까?`}
-                        confirmText="삭제"
-                        cancelText="취소"
-                        type="danger"
-                        onConfirm={async () => {
-                            try {
-                                await deleteModel(modelToDelete.id)
-                                refreshModels('delete')
-                            } catch (err) {
-                                notify('모델 삭제 실패', 'error')
-                            } finally {
-                                setShowDeleteConfirm(false)
-                                setModelToDelete(null)
-                            }
-                        }}
-                        onCancel={() => {
-                            setShowDeleteConfirm(false)
-                            setModelToDelete(null)
-                        }}
-                    />
+                <ModalPortal>
+                    <div className="fixed inset-0 z-[9999]">
+                        <div className="absolute inset-0 bg-black/20 backdrop-blur-sm pointer-events-auto" />
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="pointer-events-auto">
+                                <ConfirmPopup
+                                    open
+                                    title="모델 삭제"
+                                    description={`정말 "${modelToDelete.name}" 모델을 삭제하시겠습니까?`}
+                                    confirmText="삭제"
+                                    cancelText="취소"
+                                    type="danger"
+                                    onConfirm={async () => {
+                                        try { await deleteModel(modelToDelete.id); refreshModels('delete') }
+                                        catch { notify('모델 삭제 실패', 'error') }
+                                        finally { setShowDeleteConfirm(false); setModelToDelete(null) }
+                                    }}
+                                    onCancel={() => { setShowDeleteConfirm(false); setModelToDelete(null) }}
+                                />
+                            </div>
+                        </div>
                     </div>
-                </>
+                </ModalPortal>
             )}
         </DownloadProvider>
     )

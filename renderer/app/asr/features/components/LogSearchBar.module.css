@@ -1,28 +1,121 @@
 /* app/asr/features/components/LogSearchBar.module.css */
 
-.suggestionWrapper {
+.wrapper {
   position: fixed;
-  top: 52px;
-  right: 52px;
+  top: var(--logbar-top, 52px);
+  right: var(--logbar-right, 52px);
+  z-index: 60;
 }
 
-.scrollContainer {
-    position: absolute;
-    top: 102px;
-    right: 52px;
-    width: 300px;
-    max-height: 160px;
-    overflow-y: auto;
-    background: white;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    border-radius: 0.5rem;
-  }
+.bar {
+  position: relative;
+  width: 320px;
+  height: 48px;
+  padding: 0 44px 0 56px;
+  background: #ffffff;
+  border-radius: 9999px;
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.06),
+    0 1px 3px rgba(16, 24, 40, 0.10);
+  display: flex;
+  align-items: center;
+}
 
-  .scrollContainer::-webkit-scrollbar {
-    width: 6px;
-  }
-  .scrollContainer::-webkit-scrollbar-thumb {
-    background-color: rgba(0,0,0,0.2);
-    border-radius: 3px;
-  }
-  
+.input {
+  width: 100%;
+  font-size: 12px;
+  line-height: 1;
+  outline: none;
+  border: none;
+  background: transparent;
+  color: #111827;
+}
+
+.input::placeholder {
+  color: #9ca3af;
+}
+
+.iconBtn {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 48px;
+  height: 48px;
+  border: none;
+  background: #111827;
+  color: #fff;
+  border-radius: 9999px 0 0 9999px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+}
+
+.clearBtn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.clearBtn:hover {
+  background: #f3f4f6;
+}
+
+.clearIcon {
+  width: 16px;
+  height: 16px;
+  color: #6b7280;
+}
+
+.dropdown {
+  position: absolute;
+  margin-top: 8px;
+  right: 0;
+  width: 320px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.12);
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 6px 0;
+}
+
+.item {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #374151;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.item:hover {
+  background: #f9fafb;
+}
+
+.itemActive {
+  background: #eef2ff;
+}
+
+.dropdown::-webkit-scrollbar {
+  width: 8px;
+}
+.dropdown::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.18);
+  border-radius: 4px;
+}

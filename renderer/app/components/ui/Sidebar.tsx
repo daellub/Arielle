@@ -14,7 +14,7 @@ import {
     Database,
     Moon
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useCallback, memo } from 'react'
 import clsx from 'clsx'
 
 const items = [
@@ -29,6 +29,18 @@ const items = [
     { icon: Database, label: 'Database' },
 ]
 
+const preloadMap: Record<string, () => void> = {
+    Home:       () => import('@/app/pages/HomePage'),
+    Dashboard:  () => Promise.resolve(),
+    Security:   () => Promise.resolve(),
+    ASR:        () => import('@/app/pages/ASRPage'),
+    LLM:        () => import('@/app/pages/LLMPage'),
+    Translate:  () => import('@/app/pages/TranslatePage'),
+    TTS:        () => import('@/app/pages/TTSPage'),
+    VRM:        () => import('@/app/pages/VRMPage'),
+    Database:   () => Promise.resolve(),
+}
+
 export default function Sidebar({
     selected,
     onSelect,
@@ -37,6 +49,7 @@ export default function Sidebar({
     onSelect: (label: string) => void
 }) {
     const [hovered, setHovered] = useState(false)
+    const handleSelect = useCallback((label: string) => onSelect(label), [onSelect])
 
     return (
         <aside
@@ -54,15 +67,16 @@ export default function Sidebar({
                     <Image src="/assets/Logo.png" alt="Logo" width={60} height={45} className='min-w-[60px] min-h-[45px]' />
                 </div>
                 <div className='flex flex-col gap-5'>
-                    {items.map((item, i) => (
-                        <div key={i} onClick={() => onSelect(item.label)}>
-                            <SidebarItem
-                                icon={item.icon}
-                                label={item.label}
-                                active={selected == item.label}
-                                showText={hovered}
-                            />
-                        </div>
+                    {items.map(({ icon, label }) => (
+                        <SidebarItem
+                            key={label}
+                            icon={icon}
+                            label={label}
+                            active={selected === label}
+                            showText={hovered}
+                            onClick={() => handleSelect(label)}
+                            onHover={() => preloadMap[label]?.()}
+                        />
                     ))}
                 </div>
             </div>
@@ -74,39 +88,49 @@ export default function Sidebar({
     )
 }
 
-function SidebarItem({
+const SidebarItem = memo(function SidebarItem({
     icon: Icon,
     label,
     active,
     showText,
+    onClick,
+    onHover,
 }: {
     icon: React.ElementType
     label: string
     active?: boolean
     showText: boolean
+    onClick?: () => void
+    onHover?: () => void
 }) {
     return (
-        <div 
+        <button
+            type="button"
+            onClick={onClick}
+            onMouseEnter={onHover}
             className={clsx(
-                'flex items-center gap-3 px-3.5 py-2 rounded-full transition-all duration-200 ease-in-out cursor-pointer',
-                active ? 'bg-gray-900 text-white' : 'hover:bg-gray-400'
+            'flex items-center gap-3 px-3.5 py-2 rounded-full transition-all duration-200 ease-in-out',
+            'outline-none focus-visible:ring-2 focus-visible:ring-indigo-400',
+            active ? 'bg-gray-900 text-white' : 'hover:bg-gray-200'
             )}
+            aria-current={active ? 'page' : undefined}
+            aria-label={label}
         >
-            {/* 아이콘 */}
-            <Icon className={clsx(
+            <Icon 
+                className={clsx(
                     'w-[23px] h-[23px] min-w-[23px] min-h-[23px] flex-shrink-0',
                     active ? 'text-white' : 'text-black'
-                )}/>
-            {/* 텍스트 */}
-            <span 
+                )}
+            />
+            <span
                 className={clsx(
-                    'font-MapoPeacefull text-sm text-black whitespace-nowrap transition-transform duration-200',
+                    'font-MapoPeacefull text-sm whitespace-nowrap transition-transform duration-200',
                     showText ? 'scale-100 ml-1' : 'scale-0 w-0 overflow-hidden',
                     active ? 'text-white' : 'text-black'
                 )}
             >
                 {label}
             </span>
-        </div>
-    )
-}
+        </button>
+    )      
+})

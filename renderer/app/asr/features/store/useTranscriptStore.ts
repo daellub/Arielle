@@ -21,30 +21,27 @@ export const useTranscriptStore = create<TranscriptStore>((set, get) => ({
     currentTranscript: null,
     lastRecognizedTranscript: null,
     history: [],
-    setTranscript: (text: string) => {
-        const { lastRecognizedTranscript } = get();
-        if (lastRecognizedTranscript) {
-            set((state) => ({
-                history: [...state.history, lastRecognizedTranscript],
-                lastRecognizedTranscript: null, // history로 옮겼으면 초기화
-            }));
-        }
-        set(() => ({
+
+    setTranscript: (text: string, lang: string = 'ko') => {
+        set({
             currentTranscript: {
                 text,
-                lang: 'ko',
+                lang,
                 timestamp: new Date().toLocaleTimeString(),
-            }
+            },
+        })
+    },
+
+    finalizeTranscript: () => {
+        const cur = get().currentTranscript
+        if (!cur) return
+        set((state) => ({
+            lastRecognizedTranscript: cur,
+            history: [...state.history, cur],
+            currentTranscript: null,
         }))
     },
-    finalizeTranscript: () => {
-        const { currentTranscript } = get();
-        if (currentTranscript) {
-            set(() => ({
-                lastRecognizedTranscript: currentTranscript,
-            }))
-        }
-    },
+
     clearTranscript: () => {
         set({
             currentTranscript: null,
@@ -52,6 +49,7 @@ export const useTranscriptStore = create<TranscriptStore>((set, get) => ({
             history: [],
         })
     },
+    
     stopTranscript: () => {
         set({
             currentTranscript: null,

@@ -1,7 +1,8 @@
 // app/asr/features/store/useMicStore.ts
-import { create } from 'zustand'
+import { createWithEqualityFn } from 'zustand/traditional'
+import { shallow } from 'zustand/shallow'
 
-interface MicState {
+export interface MicState {
     deviceId?: string
     deviceName: string
     recordStatus: 'ready' | 'input' | 'error' | 'unknown'
@@ -27,28 +28,31 @@ interface MicState {
     setSilenceTimeout: (value: number) => void
 }
 
-export const useMicStore = create<MicState>((set) => ({
-    deviceId: undefined,
-    deviceName: '기본 마이크',
-    recordStatus: 'unknown',
-    processStatus: 'notready',
-    inputThreshold: 80,
-    sampleRate: 16000,
+export const useMicStore = createWithEqualityFn<MicState>()(
+    (set) => ({
+        deviceId: undefined,
+        deviceName: '기본 마이크',
+        recordStatus: 'unknown',
+        processStatus: 'notready',
+        inputThreshold: 80,
+        sampleRate: 16000,
 
-    noiseSuppression: false,
-    echoCancellation: false,
-    useVAD: false,
-    volumeGain: 100,
-    silenceTimeout: 1000,
+        noiseSuppression: false,
+        echoCancellation: false,
+        useVAD: false,
+        volumeGain: 100,
+        silenceTimeout: 1000,
 
-    setDevice: (id, name) => set({ deviceId: id, deviceName: name }),
-    setRecordStatus: (status) => set({ recordStatus: status }),
-    setProcessStatus: (status) => set({ processStatus: status }),
-    setThreshold: (value) => set({ inputThreshold: value }),
-    setSampleRate: (value) => set({ sampleRate: value }),
-    setNoiseSuppression: (enabled) => set({ noiseSuppression: enabled }),
-    setEchoCancellation: (enabled) => set({ echoCancellation: enabled }),
-    setVAD: (value: boolean) => set({ useVAD: value }),
-    setVolumeGain: (value: number) => set({ volumeGain: value }),
-    setSilenceTimeout: (value: number) => set({ silenceTimeout: value })
-}))
+        setDevice: (id, name) => set({ deviceId: id, deviceName: name ?? '기본 마이크' }),
+        setRecordStatus: (status) => set({ recordStatus: status }),
+        setProcessStatus: (status) => set({ processStatus: status }),
+        setThreshold: (value) => set({ inputThreshold: value }),
+        setSampleRate: (value) => set({ sampleRate: value }),
+        setNoiseSuppression: (enabled) => set({ noiseSuppression: enabled }),
+        setEchoCancellation: (enabled) => set({ echoCancellation: enabled }),
+        setVAD: (value: boolean) => set({ useVAD: value }),
+        setVolumeGain: (value: number) => set({ volumeGain: value }),
+        setSilenceTimeout: (value: number) => set({ silenceTimeout: value })
+    }),
+    shallow
+)

@@ -1,69 +1,83 @@
 // app/asr/features/components/MicStatus.tsx
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { shallow } from 'zustand/shallow'
 import { useMicStore } from '@/app/asr/features/store/useMicStore'
 import { useMicInputLevel } from '@/app/asr/features/hooks/useMicInputLevel'
+import type { MicState } from '@/app/asr/features/store/useMicStore'
 
 export default function MicStatus() {
+    const selectMic = (s: MicState) => ({
+        deviceId: s.deviceId,
+        deviceName: s.deviceName,
+        recordStatus: s.recordStatus,
+        processStatus: s.processStatus,
+        inputThreshold: s.inputThreshold,
+    })
+
     const {
         deviceId,
         deviceName,
         recordStatus,
         processStatus,
         inputThreshold,
-    } = useMicStore()
+    } = useMicStore(
+        selectMic,
+        shallow
+    )
 
     const inputLevelRaw = useMicInputLevel(deviceId)
     const inputLevel = deviceId ? inputLevelRaw : 0
 
-    const [animatedLevel, setAnimatedLevel] = useState(inputLevel)
+    const [animatedLevel, setAnimatedLevel] = useState(0)
+    const targetRef = useRef(0)
 
-    const store = useMicStore()
-
-    const actualRecordStatus =
-        !deviceId ? 'unknown' : recordStatus
-
-    const actualProcessStatus =
-        !deviceId ? 'notready' : processStatus
-
-    const micEnabled = !!deviceId
-
-    
     useEffect(() => {
-        const intervalId = setInterval(() => {
-            setAnimatedLevel((prev) => {
-                const diff = inputLevel - prev
-                if (Math.abs(diff) < 1) return inputLevel
-                return prev + diff * 0.1
-            })
-        }, 20)
-
-        return () => clearInterval(intervalId)
+        targetRef.current = Math.max(0, Math.min(100, inputLevel))
     }, [inputLevel])
 
-    const levelColor = 
-        animatedLevel >= 80
-            ? 'bg-red-500'
-            : animatedLevel >= store.inputThreshold * 0.8
-            ? 'bg-orange-400'
-            : 'bg-blue-500'
+    useEffect(() => {
+        let raf = 0
+        const tick = () => {
+            setAnimatedLevel((prev) => {
+                const diff = targetRef.current - prev
+                if (Math.abs(diff) < 0.5) return targetRef.current
+                return Math.max(0, Math.min(100, prev + diff * 0.15))
+            })
+            raf = requestAnimationFrame(tick)
+        }
+        raf = requestAnimationFrame(tick)
+        return () => cancelAnimationFrame(raf)
+    }, [])
 
-    const processStatusColor =
-        actualProcessStatus === 'ready' 
-            ? 'bg-green-400'
-            : actualProcessStatus === 'error'
-            ? 'bg-red-400' 
-            : 'bg-gray-400'
+    const actualRecordStatus = !deviceId ? 'unknown' : recordStatus
+    const actualProcessStatus = !deviceId ? 'notready' : processStatus
+    const micEnabled = !!deviceId
 
-    const statusColor =
-        actualRecordStatus === 'ready' 
-            ? 'bg-green-400'
-            : actualRecordStatus === 'input' 
-            ? 'bg-orange-400'
-            : actualRecordStatus === 'error'
-            ? 'bg-red-400'
-            : 'bg-gray-400'
+    const levelColor = useMemo(() => {
+        if (animatedLevel >= 80) return 'bg-red-500'
+        if (animatedLevel >= inputThreshold * 0.8) return 'bg-orange-400'
+        return 'bg-blue-500'
+    }, [animatedLevel, inputThreshold])
+
+    const processStatusColor = useMemo(() => {
+        return actualProcessStatus === 'ready'
+        ? 'bg-green-400'
+        : actualProcessStatus === 'error'
+        ? 'bg-red-400'
+        : 'bg-gray-400'
+    }, [actualProcessStatus])
+
+    const statusColor = useMemo(() => {
+        return actualRecordStatus === 'ready'
+        ? 'bg-green-400'
+        : actualRecordStatus === 'input'
+        ? 'bg-orange-400'
+        : actualRecordStatus === 'error'
+        ? 'bg-red-400'
+        : 'bg-gray-400'
+    }, [actualRecordStatus])
 
 
     return (
@@ -82,13 +96,24 @@ export default function MicStatus() {
                 <div>
                     <div className='text-sm'>Device Info</div>
                     <div className='text-[14px] mx-1 text-neutral-500'>
-                        {micEnabled ? deviceName : '마이크가 꺼져 있습니다.'}</div>
+                        {micEnabled ? deviceName : '마이크가 꺼져 있습니다.'}
+                    </div>
                 </div>
+
                 <div>
-                    <div className="text-black">Input Level</div>
-                    <div className="w-full h-[16px] mt-[4px] border border-gray-300 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="flex items-center justify-between text-black">
+                        <span>Input Level</span>
+                        <span className="text-xs text-neutral-500">{Math.round(animatedLevel)}%</span>
+                    </div>
+                    <div
+                        className="w-full h-[16px] mt-[4px] border border-gray-300 bg-gray-200 rounded-full overflow-hidden"
+                        role="progressbar"
+                        aria-valuenow={Math.round(animatedLevel)}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                    >
                         <div
-                            className={`h-full ${levelColor} transition-all duration-200`}
+                            className={`h-full ${levelColor} transition-[width] duration-150 ease-out`}
                             style={{ width: `${animatedLevel}%` }}
                         />
                     </div>

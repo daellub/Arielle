@@ -6,7 +6,7 @@ interface ModelInfo {
     framework: string
     device: string
     language: string
-    loaded: string
+    loaded: boolean
     created_at: string
 }
 
@@ -38,7 +38,8 @@ interface Store {
     setHardwareInfo: (info: HardwareInfo | null) => void
 }
 
-export const useSystemStatusStore = create<Store>((set) => ({
+// 동일 값일 때 업데이트 중지
+export const useSystemStatusStore = create<Store>((set, get) => ({
     status: {
         databaseActive: false,
         modelActive: false,
@@ -46,23 +47,24 @@ export const useSystemStatusStore = create<Store>((set) => ({
         hardwareInfo: null
     },
     setDatabaseStatus: (active) =>
-        set((state) => ({
-            status: { ...state.status, databaseActive: active },
-        })),
+        set((state) => state.status.databaseActive === active
+            ? state
+            : { status: { ...state.status, databaseActive: active } }),
     setModelStatus: (active) =>
-        set((state) => ({
-            status: { ...state.status, modelActive: active }
-        })),
+        set((state) => state.status.modelActive === active
+            ? state
+            : { status: { ...state.status, modelActive: active } }),
     setModelStatusAndInfo: (active, info) =>
-        set((state) => ({
-            status: {
-                ...state.status,
-                modelActive: active,
-                modelInfo: info,
-            },
-        })),
+        set((state) => {
+            const prev = state.status
+            const sameActive = prev.modelActive === active
+            const sameInfo = JSON.stringify(prev.modelInfo) === JSON.stringify(info)
+            if (sameActive && sameInfo) return state
+            return { status: { ...prev, modelActive: active, modelInfo: info } }
+        }),
     setHardwareInfo: (info) =>
-        set((state) => ({
-            status: { ...state.status, hardwareInfo: info }
-        })),
+        set((state) => {
+            const same = JSON.stringify(state.status.hardwareInfo) === JSON.stringify(info)
+            return same ? state : { status: { ...state.status, hardwareInfo: info } }
+        }),
 }))
