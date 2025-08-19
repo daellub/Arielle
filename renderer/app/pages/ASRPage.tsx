@@ -146,21 +146,6 @@ export default function ASRPage() {
         didLoadOnce.current = true
 
         refreshModels('refresh')
-
-        // const ctrl = new AbortController()
-        // ;(async () => {
-        //     try {
-        //         const data = await fetchModels({ signal: ctrl.signal })
-        //         setModels(prev => shallowEqualModels(prev, data) ? prev : data)
-        //         notify(MESSAGE_MAP.refresh, 'info')
-        //     } catch (e: any) {
-        //         if (e?.name === 'CanceledError' || e?.name === 'AbortError' || e?.isCanceled) return
-        //         console.error('초기 모델 목록 로드 실패:', e)
-        //         notify('모델 목록을 불러오지 못했습니다.', 'error')
-        //     }
-        // })()
-
-        // return () => ctrl.abort()
     }, [refreshModels])
 
     const anyModalOpen = showSettings || showAddModel || showModelInfo || showDeleteConfirm
