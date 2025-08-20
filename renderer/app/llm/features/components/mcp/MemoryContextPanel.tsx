@@ -2,7 +2,7 @@
 'use client'
 
 import axios from 'axios'
-import { useState, useRef } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
     SlidersHorizontal,
@@ -16,10 +16,21 @@ import {
 } from 'lucide-react'
 
 import { useMCPStore } from '@/app/llm/features/store/useMCPStore'
-import { useNotificationStore } from '@/app/store/useNotificationStore'
+import { toast } from '@/app/common/toast/useToastStore'
+import StepperNumber from '@/app/components/ui/StepperNumber'
+
+const TOKEN_RANGE = { min: 256, max: 32768, step: 64 }
 
 const strategies = ['None', 'Window', 'Summary', 'Hybrid'] as const
 type Strategy = typeof strategies[number]
+
+const BASE_MEMORY = {
+    strategy: 'Hybrid' as Strategy,
+    maxTokens: 2048,
+    includeHistory: true,
+    saveMemory: true,
+    contextPrompts: [] as Array<{ id: number; content: string; enabled: boolean }>,
+}
 
 const strategyDescriptions: Record<Strategy, string> = {
     None: '메모리 저장 기능을 사용하지 않습니다.',
@@ -32,56 +43,64 @@ export default function MemoryContextPanel() {
     const activeModelId = useMCPStore(s => s.activeModelId)
     const config = useMCPStore(s => s.getCurrentConfig())
     const updateConfig = useMCPStore(s => s.updateConfig)
-    const notify = useNotificationStore(s => s.show)
+    const disabled = !activeModelId
 
-    const memory = config?.memory ?? {
-        strategy: 'Hybrid',
-        maxTokens: 2048,
-        includeHistory: true,
-        saveMemory: true,
-        contextPrompts: []
-    }
+    const memory = useMemo(
+        () => ({
+            strategy: 'Hybrid' as Strategy,
+            maxTokens: 2048,
+            includeHistory: true,
+            saveMemory: true,
+            contextPrompts: [] as Array<{ id: number; content: string; enabled: boolean }>,
+            ...(config?.memory ?? {}),
+        }),
+        [config?.memory]
+    )
 
-    const memoryStrategy = memory.strategy
-    const maxTokens = memory.maxTokens
-    const includeHistory = memory.includeHistory
-    const saveMemory = memory.saveMemory
-    const prompts = memory.contextPrompts
+    const { strategy: memoryStrategy, maxTokens, includeHistory, saveMemory, contextPrompts: prompts } = memory
 
-    const updateMemory = (update: Partial<typeof memory>) => {
-        if (!activeModelId) return
-        updateConfig(activeModelId, {
-            memory: { ...memory, ...update }
-        })
-    }
+    const updateMemory = useCallback(
+        (update: Partial<typeof memory>) => {
+            if (!activeModelId) return
+            updateConfig(activeModelId, { memory: { ...memory, ...update } })
+        },
+        [activeModelId, updateConfig, memory]
+    )
 
-    const saveMemoryToServer = async () => {
-        if (!activeModelId) return notify('모델이 선택되지 않았습니다.', 'error')
-        try {
+    const saveMemoryToServer = useCallback(async () => {
+        if (!activeModelId) {
+            toast.error({ description: '모델이 선택되지 않았습니다.', compact: true})
+            return
+        }
+        const p = (async () => {
             const paramRes = await axios.get(`http://localhost:8500/mcp/llm/model/${activeModelId}/params`)
             const currentParams = paramRes.data || {}
             await axios.patch(`http://localhost:8500/mcp/llm/model/${activeModelId}/params`, {
                 ...currentParams,
-                memory
+                memory,
             })
-            notify('Memory 설정이 저장되었습니다.', 'success')
-        } catch (err) {
-            console.error('Memory 설정 저장 실패:', err)
-            notify('Memory 설정 저장 중 오류 발생', 'error')
-        }
-    }
+        })()
+        try {
+            await toast.promise(p, {
+                loading: { description: 'Memory 설정 저장 중…', compact: true },
+                success: { description: 'Memory 설정이 저장되었습니다.', compact: true },
+                error:   { description: 'Memory 설정 저장 중 오류 발생', compact: true },
+            })
+        } catch {}
+    }, [activeModelId, memory])
 
     const [showAddModal, setShowAddModal] = useState(false)
     const [newPrompt, setNewPrompt] = useState('')
 
     const addPrompt = () => {
-        const nextId = prompts.length
-            ? Math.max(...prompts.map(p => p.id)) + 1
-            : 1
-        const updated = [...prompts, { id: nextId, content: newPrompt.trim(), enabled: true }]
+        const content = newPrompt.trim()
+        if (!content) return
+        const nextId = prompts.length ? Math.max(...prompts.map(p => p.id)) + 1 : 1
+        const updated = [...prompts, { id: nextId, content, enabled: true }]
         updateMemory({ contextPrompts: updated })
         setNewPrompt('')
         setShowAddModal(false)
+        toast.success({ description: '프롬프트가 추가되었습니다.', compact: true })
     }
 
     const togglePrompt = (id: number) => {
@@ -94,6 +113,7 @@ export default function MemoryContextPanel() {
     const removePrompt = (id: number) => {
         const updated = prompts.filter(p => p.id !== id)
         updateMemory({ contextPrompts: updated })
+        toast.info({ description: '프롬프트를 삭제했습니다.', compact: true })
     }
 
     const handleStrategyChange = (strategy: Strategy) => {
@@ -104,13 +124,23 @@ export default function MemoryContextPanel() {
         updateMemory({ maxTokens: value })
     }
 
-    const toggleIncludeHistory = () => {
-        updateMemory({ includeHistory: !includeHistory })
-    }
+    const toggleIncludeHistory = useCallback(() => {
+        if (!activeModelId) return
+        const s = useMCPStore.getState()
+        const prev = { ...BASE_MEMORY, ... (s.getCurrentConfig()?.memory ?? {}) }
+        updateConfig(activeModelId, {
+            memory: { ...prev, includeHistory: !prev.includeHistory }
+        })
+    }, [activeModelId, updateConfig])
 
-    const toggleSaveMemory = () => {
-        updateMemory({ saveMemory: !saveMemory })
-    }
+    const toggleSaveMemory = useCallback(() => {
+        if (!activeModelId) return
+        const s = useMCPStore.getState()
+        const prev = { ...BASE_MEMORY, ...(s.getCurrentConfig()?.memory ?? {}) }
+        updateConfig(activeModelId, {
+            memory: { ...prev, saveMemory: !prev.saveMemory }
+        })
+    }, [activeModelId, updateConfig])
 
     return (
         <div className="space-y-4">
@@ -140,11 +170,16 @@ export default function MemoryContextPanel() {
 
                 <div className="flex justify-between items-center p-2 bg-white/5 rounded">
                     <span className="text-sm text-white">Max Tokens</span>
-                    <input
-                        type="number"
-                        className="bg-white/10 text-white text-sm rounded px-2 py-1 w-[100px]"
+                    <StepperNumber 
                         value={maxTokens}
-                        onChange={e => handleMaxTokensChange(Number(e.target.value))}
+                        onChange={handleMaxTokensChange}
+                        min={TOKEN_RANGE.min}
+                        max={TOKEN_RANGE.max}
+                        step={TOKEN_RANGE.step}
+                        precision={0}
+                        disabled={disabled}
+                        ariaLabel='Max Tokens'
+                        className='w-[120px]'
                     />
                 </div>
                 <div className="flex justify-between items-center p-2 bg-white/5 rounded">
@@ -152,6 +187,8 @@ export default function MemoryContextPanel() {
                     <button
                         className="text-white/40 hover:text-white"
                         onClick={toggleIncludeHistory}
+                        aria-pressed={includeHistory}
+                        aria-label='Include History'
                     >
                         {includeHistory
                             ? <ToggleRight className="w-5 h-5 text-indigo-400" />
@@ -164,6 +201,8 @@ export default function MemoryContextPanel() {
                     <button
                         className="text-white/40 hover:text-white"
                         onClick={toggleSaveMemory}
+                        aria-pressed={saveMemory}
+                        aria-label='Save Memory'
                     >
                         {saveMemory
                             ? <ToggleRight className="w-5 h-5 text-indigo-400" />
@@ -246,12 +285,18 @@ export default function MemoryContextPanel() {
                             placeholder="예: You are a helpful assistant..."
                             value={newPrompt}
                             onChange={e => setNewPrompt(e.target.value)}
+                            onKeyDown={(e) => {
+                                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') addPrompt()
+                                if (e.key === 'Escape') setShowAddModal(false)
+                            }}
                         />
                         <div className="flex justify-end gap-2 pt-2">
                             <button
                                 onClick={() => setShowAddModal(false)}
                                 className="text-xs text-white/50"
-                            >취소</button>
+                            >
+                                취소
+                            </button>
                             <button
                                 disabled={!newPrompt.trim()}
                                 onClick={addPrompt}

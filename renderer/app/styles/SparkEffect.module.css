@@ -1,33 +1,54 @@
 /* app/styles/SparkEffect.module.css */
-.spark-container {
+.container {
     position: absolute;
     inset: 0;
     z-index: 0;
     pointer-events: none;
     overflow: hidden;
+    contain: layout paint style;
 }
 
-.spark-particle {
+.spark {
     position: absolute;
-    background-color: rgba(255, 255, 255, 0.2);
+    top: var(--y);
+    left: var(--x);
+    width: var(--size);
+    height: var(--size);
     border-radius: 9999px;
-    filter: blur(4px);
-    animation-name: sparkFloat;
-    animation-timing-function: ease-in-out;
-    animation-iteration-count: infinite;
+    opacity: 0.45;
+
+    background: radial-gradient(
+        closest-side,
+        rgba(255, 240, 180, 0.9),
+        rgba(255, 240, 180, 0.25) 60%,
+        rgba(255, 240, 180, 0) 70%
+    );
+    mix-blend-mode: screen;
+
+    will-change: transform, opacity;
+    transform: translateZ(0);
+
+    animation: sparkFloat var(--dur) ease-in-out var(--delay) infinite;
 }
 
 @keyframes sparkFloat {
     0% {
-        transform: translateY(0) scale(1);
+        transform: translate3d(0, 0, 0) scale(1);
         opacity: 0.6;
     }
     50% {
-        transform: translateY(-20px) scale(1.4);
+        transform: translate3d(0, calc(-1 * var(--amp)), 0) scale(1.35);
         opacity: 0.9;
     }
     100% {
-        transform: translateY(0) scale(1);
+        transform: translate3d(0, 0, 0) scale(1);
         opacity: 0.6;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .spark {
+        animation: none;
+        opacity: 0.3;
     }
 }

@@ -1,470 +1,512 @@
+// app/llm/features/components/mcp/ToolsPanel.tsx
 'use client'
 
-import axios from 'axios'
-import { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
     Wrench,
     Trash2,
     Play,
-    Save,
     Plus,
     ToggleLeft,
     ToggleRight,
     CheckCircle,
     XCircle,
     Link2,
-    Pencil
+    Link2Off,
+    Pencil,
+    RefreshCw,
+    Search,
+    Save,
 } from 'lucide-react'
 import clsx from 'clsx'
 
-import {
-    fetchTools,
-    createTool,
-    updateTool,
-    deleteTool,
-} from '@/app/llm/services/toolsAPI'
+import { fetchTools, createTool, updateTool, deleteTool } from '@/app/llm/services/toolsAPI'
 import { useMCPStore } from '@/app/llm/features/store/useMCPStore'
-import { useNotificationStore } from '@/app/store/useNotificationStore'
+import { toast } from '@/app/common/toast/useToastStore'
+import { mcpHttp } from '@/app/lib/api/mcp'
+import ToolEditorModal, { Tool } from './ToolEditorModal'
 
-interface Tool {
-    id?: number
-    name: string
-    type: string
-    command: string
-    status: 'active' | 'inactive'
-    enabled: boolean
-}
+type LinkedFilter = 'all' | 'linked' | 'unlinked'
+type EnabledFilter = 'all' | 'on' | 'off'
 
 export default function ToolsPanel() {
-    const [tools, setTools] = useState<Tool[]>([])
-    const [showAddModal, setShowAddModal] = useState(false)
-    const [showEditModal, setShowEditModal] = useState(false)
-    const [form, setForm] = useState<Tool>({
-        name: '',
-        type: '',
-        command: '',
-        status: 'active',
-        enabled: true
-    })
-    const activeModelId = useMCPStore(s => s.activeModelId)
-    const configMap = useMCPStore(s => s.configMap)
-    const updateConfig = useMCPStore(s => s.updateConfig)
+    const activeModelId = useMCPStore((s) => s.activeModelId)
+    const configMap = useMCPStore((s) => s.configMap)
+    const updateConfig = useMCPStore((s) => s.updateConfig)
     const linkedToolIds = activeModelId ? configMap[activeModelId]?.linkedToolIds ?? [] : []
 
-    const notify = useNotificationStore((s) => s.show)
+    const [tools, setTools] = useState<Tool[]>([])
+    const [loading, setLoading] = useState(true)
+    const [refreshing, setRefreshing] = useState(false)
 
-    useEffect(() => {
-        fetchTools().then(data => setTools(data))
+    const [query, setQuery] = useState('')
+    const [filterLinked, setFilterLinked] = useState<LinkedFilter>('all')
+    const [filterEnabled, setFilterEnabled] = useState<EnabledFilter>('all')
+
+    const [editorOpen, setEditorOpen] = useState(false)
+    const [editorMode, setEditorMode] = useState<'add' | 'edit'>('add')
+    const [editingTool, setEditingTool] = useState<Tool | undefined>(undefined)
+
+    const loadTools = useCallback(async (silent = false) => {
+        try {
+            if (!silent) setLoading(true)
+            setRefreshing(silent)
+            const data = await fetchTools()
+            setTools(Array.isArray(data) ? data : [])
+        } catch {
+            toast.error({ title: '로드 실패', description: '도구 목록을 불러오지 못했습니다.', compact: true })
+        } finally {
+            setLoading(false)
+            setRefreshing(false)
+        }
     }, [])
 
-    useEffect(() => {
+    const loadLinked = useCallback(async () => {
         if (!activeModelId) return
-        axios.get(`http://localhost:8500/mcp/llm/model/${activeModelId}/tools`)
-            .then(res => {
-                const ids = res.data.map((t: any) => t.tool_id)
-                updateConfig(activeModelId, { linkedToolIds: ids })
-            })
-            .catch(err => {
-                console.error('연동된 도구 불러오기 실패:', err)
-                notify('연동된 도구 목록을 불러오는 중 오류 발생', 'error')
-            })
-    }, [activeModelId])
-
-    const handleFormChange = (key: keyof Tool, value: any) =>
-        setForm(prev => ({ ...prev, [key]: value }))
-
-    const addTool = async () => {
-        const newTool = await createTool(form)
-        setTools(prev => [...prev, newTool])
-        setForm({ name: '', type: '', command: '', status: 'active', enabled: true })
-        setShowAddModal(false)
-
-        notify('도구를 추가했습니다.', 'success')
-    }
-
-    const editTool = async (id: number) => {
-        const currentTool = tools.find(tool => tool.id === id)
-        if (!currentTool) return
-
-        const hasChanges =
-            form.name !== currentTool.name ||
-            form.type !== currentTool.type ||
-            form.command !== currentTool.command ||
-            form.status !== currentTool.status ||
-            form.enabled !== currentTool.enabled
-        
-        if (!hasChanges) {
-            setShowEditModal(false)
-            notify('도구를 수정했습니다.', 'success')
-            return;
-        }
-
-        const updatedTool = { ...form, id }
         try {
-            const updatedData = await updateTool(id, updatedTool)
-            setTools(prev =>
-                prev.map(tool => (tool.id === id ? updatedData : tool))
-            )
-            setShowEditModal(false)
-            setForm({ name: '', type: '', command: '', status: 'active', enabled: true })
-            notify('도구를 수정했습니다.', 'success')
-        } catch (err) {
-            console.error('Error updating tool:', err)
-            notify('도구를 수정하는 중 오류가 발생했습니다.', 'error')
+            const { data } = await mcpHttp.get(`/llm/model/${encodeURIComponent(activeModelId)}/tools`)
+            const ids: number[] = Array.isArray(data) ? data.map((t: any) => t.tool_id) : []
+            updateConfig(activeModelId, { linkedToolIds: ids })
+        } catch {
+            toast.error({ description: '연동된 도구를 불러오지 못했습니다.', compact: true })
         }
-    }
+    }, [activeModelId, updateConfig])
 
-    const removeTool = async (id: number) => {
-        await deleteTool(id)
-        setTools(prev => prev.filter(tool => tool.id !== id))
+    useEffect(() => {
+        loadTools(false)
+    }, [loadTools])
 
-        notify('도구를 삭제했습니다.', 'success')
-    }
+    useEffect(() => {
+        loadLinked()
+    }, [loadLinked])
 
-    const toggleTool = async (tool: Tool) => {
-        try {
-            const updatedTool = {
-                ...tool,
-                enabled: !tool.enabled
-            }
-            await updateTool(tool.id!, updatedTool)
-            setTools(prev =>
-                prev.map(t => (t.id === tool.id ? { ...t, enabled: !t.enabled } : t))
-            )
-
-            notify(`도구를 ${tool.enabled ? '비활성화' : '활성화'}했습니다.`, 'success')
-        } catch (err) {
-            console.error('Error toggling tool:', err)
-            notify('도구를 활성화/비활성화하는 중 오류가 발생했습니다.', 'error')
-        }
-    }
-
-    const handleEditTool = (tool: Tool) => {
-        setForm({
-            id: tool.id,
-            name: tool.name,
-            type: tool.type,
-            command: tool.command,
-            status: tool.status,
-            enabled: tool.enabled
-        })
-        setShowAddModal(false)
-        setShowEditModal(true)
-    }
-
-    const handleToggleToolLink = async (toolId: number) => {
-        if (!activeModelId) return notify('모델을 먼저 선택해주세요.', 'error')
-
-        const updated = linkedToolIds.includes(toolId)
-            ? linkedToolIds.filter(id => id !== toolId)
-            : [...linkedToolIds, toolId]
-
-        updateConfig(activeModelId, { linkedToolIds: updated })
-
-        try {
-            await axios.patch(
-                `http://localhost:8500/mcp/llm/model/${activeModelId}/tools`,
-                { tool_ids: updated }
-            )
-
-            const paramRes = await axios.get(
-                `http://localhost:8500/mcp/llm/model/${activeModelId}/params`
-            )
-            const currentParams = paramRes.data || {}
-
-            const nextParams = {
-                ...currentParams,
-                tools: updated
-            }
-
-            await axios.patch(
-                `http://localhost:8500/mcp/llm/model/${activeModelId}/params`,
-                nextParams
-            )
-
-            notify('도구 연동 상태가 업데이트되었습니다.', 'success')
-        } catch (err) {
-            console.error('도구 연동 업데이트 실패:', err)
-            notify('도구 연동 상태 저장 실패', 'error')
-        }
-    }
-
-    const executeTool = async (tool: Tool) => {
-        if (!tool.enabled) {
-            notify('도구가 비활성화되어 있습니다.', 'error')
+    const handleToggleLink = useCallback(async (toolId: number) => {
+        if (!activeModelId) {
+            toast.info({ description: '먼저 모델을 선택해 주세요.', compact: true })
             return
-        } else {
-            try {
-                if (tool.type === 'python') {
-                    if (!tool.command) {
-                        notify('Python 도구의 커맨드가 비어있습니다.', 'error')
-                        return
-                    }
+        }
+        const current = linkedToolIds
+        const next = current.includes(toolId) ? current.filter((id) => id !== toolId) : [...current, toolId]
+        updateConfig(activeModelId, { linkedToolIds: next })
 
-                    const encodedCommand = encodeURIComponent(tool.command)
+        try {
+            await mcpHttp.patch(`/llm/model/${encodeURIComponent(activeModelId)}/tools`, { tool_ids: next })
+            const { data: params } = await mcpHttp.get(`/llm/model/${encodeURIComponent(activeModelId)}/params`)
+            await mcpHttp.patch(`/llm/model/${encodeURIComponent(activeModelId)}/params`, {
+                ...params,
+                tools: next,
+            })
+            toast.success({ description: '도구 연동이 업데이트되었습니다.', compact: true })
+        } catch {
+            updateConfig(activeModelId, { linkedToolIds: current })
+            toast.error({ description: '연동 업데이트 실패', compact: true })
+        }
+    }, [activeModelId, linkedToolIds, updateConfig])
 
-                    const response = await axios.get('http://localhost:8500/mcp/api/tools/python', {
-                        params: { command: encodedCommand }
+    const toggleEnabled = useCallback(async (tool: Tool) => {
+        if (!tool.id) return
+        const prev = { ...tool }
+        const next = { ...tool, enabled: !tool.enabled }
+        setTools((list) => list.map((t) => (t.id === tool.id ? next : t)))
+        try {
+            const req = updateTool(tool.id, next)
+            await toast.promise(req as unknown as Promise<any>, {
+                loading: { description: '상태 변경 중…', compact: true },
+                success: { description: `도구 ${next.enabled ? '활성화' : '비활성화'}됨`, compact: true },
+                error: { description: '상태 변경 실패', compact: true },
+            })
+        } catch {
+            setTools((list) => list.map((t) => (t.id === prev.id ? prev : t)))
+        }
+    }, [])
+
+    const confirmDelete = useCallback((id: number, name: string) => {
+        const tid = toast.show({
+            variant: 'warning',
+            title: '도구 삭제',
+            description: `"${name}"을(를) 삭제할까요?`,
+            actionText: '삭제',
+            onAction: async () => {
+                toast.dismiss(tid)
+                try {
+                    await toast.promise(deleteTool(id) as unknown as Promise<any>, {
+                        loading: { description: '삭제 중…', compact: true },
+                        success: { description: '삭제 완료', compact: true },
+                        error: { description: '삭제 실패', compact: true },
                     })
-                    console.log('Python tool response:', response.data)
-                } else if (tool.type === 'rest') {
-                    const response = await axios.get(tool.command)
-                    console.log('REST tool response:', response.data)
-                } else if (tool.type === 'powershell') {
-                    const response = await axios.get('http://localhost:8500/mcp/api/tools/powershell', {
-                        params: { command: tool.command }
-                    })
-                    console.log('Bash tool response:', response.data)
-                }
-                notify(`도구 ${tool.name}을(를) 실행했습니다.`, 'success')
-            } catch (err) {
-                console.error('Error executing tool:', err)
-                notify(`도구 ${tool.name}을(를) 실행하는 중 오류가 발생했습니다.`, 'error')
+                    setTools((prev) => prev.filter((t) => t.id !== id))
+                } catch {}
+            },
+            duration: 8000,
+        })
+    }, [])
+
+    // REST::JSON 파서
+    function parseRestCommandString(cmd: string): null | { method: string; url: string; headers?: any; body?: any; timeout?: number } {
+        if (!cmd.startsWith('REST::')) return null
+        try {
+            const json = JSON.parse(cmd.slice(6))
+            return {
+                method: (json.method || 'GET').toUpperCase(),
+                url: json.url,
+                headers: json.headers,
+                body: json.body,
+                timeout: json.timeout,
             }
+        } catch {
+            return null
         }
     }
 
-    const getPlaceholder = (type: string) => {
-        switch (type) {
-            case 'python':
-                return 'Python 커맨드 입력';
-            case 'rest':
-                return 'REST API URL 입력';
-            case 'powershell':
-                return 'PowerShell 명령어 입력';
-            default:
-                return '커맨드를 입력하세요';
+    const executeTool = useCallback(async (tool: Tool) => {
+        if (!tool.enabled) {
+            toast.info({ description: '도구가 비활성화되어 있습니다.', compact: true })
+            return
         }
-    }
+        try {
+            let req: Promise<any>
+            if (tool.type === 'python') {
+                req = mcpHttp.get('/api/tools/python', { params: { command: tool.command } })
+            } else if (tool.type === 'rest') {
+                const parsed = parseRestCommandString(tool.command)
+                if (parsed) {
+                    const cfg: any = {
+                        headers: parsed.headers,
+                        timeout: parsed.timeout,
+                    }
+                    const m = parsed.method
+                    if (m === 'GET' || m === 'DELETE') {
+                        req = mcpHttp.request({ url: parsed.url, method: m as any, ...cfg })
+                    } else {
+                        req = mcpHttp.request({ url: parsed.url, method: m as any, data: parsed.body, ...cfg })
+                    }
+                } else {
+                    // 구버전: command 에 URL만 들어있음 → GET
+                    req = mcpHttp.get(tool.command)
+                }
+            } else if (tool.type === 'powershell') {
+                req = mcpHttp.get('/api/tools/powershell', { params: { command: tool.command } })
+            } else {
+                toast.info({ description: `알 수 없는 타입: ${tool.type}`, compact: true })
+                return
+            }
+
+            const { data } = await toast.promise(req, {
+                loading: { description: '도구 실행 중…', compact: true },
+                success: { description: '도구 실행 완료', compact: true },
+                error: { description: '도구 실행 실패', compact: true },
+            })
+            console.log('Tool result:', data)
+        } catch {}
+    }, [])
+
+    const filtered = useMemo(() => {
+        const q = query.trim().toLowerCase()
+        return tools
+            .filter((t) => {
+                if (q) {
+                    const hit = `${t.name} ${t.command} ${t.type}`.toLowerCase().includes(q)
+                    if (!hit) return false
+                }
+                if (filterLinked !== 'all') {
+                    const linked = t.id !== undefined && linkedToolIds.includes(t.id)
+                    if (filterLinked === 'linked' && !linked) return false
+                    if (filterLinked === 'unlinked' && linked) return false
+                }
+                if (filterEnabled !== 'all') {
+                    if (filterEnabled === 'on' && !t.enabled) return false
+                    if (filterEnabled === 'off' && t.enabled) return false
+                }
+                return true
+            })
+            .sort((a, b) => {
+                const al = a.id !== undefined && linkedToolIds.includes(a.id) ? 1 : 0
+                const bl = b.id !== undefined && linkedToolIds.includes(b.id) ? 1 : 0
+                if (al !== bl) return bl - al
+                if (a.enabled !== b.enabled) return (b.enabled ? 1 : 0) - (a.enabled ? 1 : 0)
+                return a.name.localeCompare(b.name)
+            })
+    }, [tools, query, filterLinked, filterEnabled, linkedToolIds])
+
+    useEffect(() => {
+        if (!editorOpen) return
+        const prev = document.body.style.overflow
+        document.body.style.overflow = 'hidden'
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setEditorOpen(false) }
+        window.addEventListener('keydown', onKey)
+        return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', onKey) }
+    }, [editorOpen])
 
     return (
-        <div className="space-y-2">
-            <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-white/80 flex items-center gap-2">
-                    <Wrench className="w-4 h-4 text-white/60" />
-                    툴 목록
-                </h3>
-                <button
-                    onClick={() => setShowAddModal(true)}
-                    className="text-xs text-indigo-300 hover:text-indigo-400 transition flex items-center gap-1"
-                >
-                    <Plus className="w-4 h-4" />
-                    툴 추가
-                </button>
+        <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3 min-w-0 py-0.5">
+                <div className="flex items-center gap-2 min-w-0">
+                    <h3 className="flex items-center gap-1 text-[12px] md:text-sm leading-5 font-semibold text-white/85 whitespace-nowrap">
+                        <Wrench className="w-4 h-4 text-white/60" />
+                        <span className="truncate max-w-[28ch] md:max-w-[40ch]">툴 목록</span>
+                    </h3>
+                    <span className="hidden sm:inline text-[11px] leading-5 text-white/50 whitespace-nowrap">
+                        총 {tools.length}개 · 연결 {linkedToolIds.length}개
+                    </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                    <button
+                        onClick={() => loadTools(true)}
+                        disabled={refreshing}
+                        title="새로고침"
+                        className={clsx(
+                            'inline-flex h-6 items-center gap-1 rounded px-1.5 text-[11px] leading-5',
+                            'text-white/70 hover:text-white transition whitespace-nowrap',
+                            refreshing && 'opacity-60 cursor-not-allowed'
+                        )}
+                    >
+                        <RefreshCw className={clsx('w-3.5 h-3.5', refreshing && 'animate-spin')} />
+                        <span className="hidden sm:inline">새로고침</span>
+                    </button>
+                    <button
+                        onClick={() => { setEditorMode('add'); setEditingTool(undefined); setEditorOpen(true) }}
+                        title="툴 추가"
+                        className="inline-flex h-6 items-center gap-1 rounded px-1.5 text-[11px] leading-5 text-indigo-300 hover:text-indigo-200 transition whitespace-nowrap"
+                    >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">툴 추가</span>
+                    </button>
+                </div>
             </div>
 
-            {tools.map((tool, i) => (
-                <div
-                    key={i}
-                    className="p-2 rounded-md bg-white/5 hover:bg-white/10 transition"
-                >
-                    <div className="flex justify-between items-start mb-1">
-                        <div className="flex items-center gap-1 flex-1 min-w-0">
-                            <Wrench className="w-4 h-4 text-white/40" />
-                            <span className="text-white font-medium">{tool.name}</span>
-                            <span className="text-white/40 text-[10px]">({tool.type})</span>
-                        </div>
-                        <div className="flex items-center gap-2 self-start">
-                            <button
-                                onClick={() => handleToggleToolLink(tool.id!)}
-                                className={clsx(
-                                    'px-2 py-0.5 rounded-full text-[10px] border transition',
-                                    linkedToolIds.includes(tool.id!)
-                                        ? 'bg-indigo-500 text-white border-indigo-400'
-                                        : 'bg-white/10 text-white/40 border-white/20 hover:bg-white/20'
-                                )}
-                            >
-                                {linkedToolIds.includes(tool.id!) ? '연결됨' : '미연결'}
-                            </button>
-                            <button
-                                className="text-white/40 hover:text-white/70"
-                                onClick={() => executeTool(tool)}
-                            >
-                                <Play className="w-4 h-4" />
-                            </button>
-                            <button
-                                className='text-white/40 hover:text-white/70'
-                                onClick={() => handleEditTool(tool)}
-                            >
-                                <Pencil className="w-4 h-4" />
-                            </button>
-                            <button
-                                className="text-white/40 hover:text-white/70"
-                                onClick={() => toggleTool(tool)} 
-                            >
-                                {tool.enabled
-                                    ? <ToggleRight className="w-5 h-5 text-indigo-400" />
-                                    : <ToggleLeft className="w-5 h-5 text-white/40" />
-                                }
-                            </button>
-                            <button
-                                className="text-white/30 hover:text-red-400"
-                                onClick={() => tool.id !== undefined && removeTool(tool.id)}
-                            >
-                                <Trash2 className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-1 text-white/40 text-[10px] mb-1 break-all">
-                        <Link2 className="w-4 h-4" />
-                        <span>{tool.command}</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        {tool.enabled
-                            ? <CheckCircle className="w-4 h-4 text-green-400" />
-                            : <XCircle className="w-4 h-4 text-red-400" />
-                        }
-                        <span className={clsx('text-[10px] font-medium', {
-                            'text-green-400': tool.enabled,
-                            'text-red-400': !tool.enabled
-                        })}>
-                            {tool.enabled ? 'Active' : 'Inactive'}
-                        </span>
+            <div className="flex flex-wrap items-center gap-2">
+                <div className="mt-2 flex items-center gap-2 w-full sm:w-auto min-w-[220px]">
+                    <div className="flex items-center gap-1 rounded-md bg-white/10 px-2 py-1 ring-1 ring-white/10 w-full">
+                        <Search className="w-3.5 h-3.5 text-white/60 shrink-0" />
+                        <input
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            placeholder="검색(이름/커맨드/타입)…"
+                            className="bg-transparent text-xs leading-5 text-white/90 outline-none placeholder:text-white/40 w-full"
+                        />
                     </div>
                 </div>
-            ))}
 
-            {showAddModal && createPortal(
-                <div
-                    className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
-                    onClick={() => setShowAddModal(false)}
-                >
-                    <div
-                        className="bg-[#2c2c3d] rounded-lg p-6 space-y-4 w-[90%] max-w-sm max-h-[90vh] overflow-auto"
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <div className="flex justify-between items-center">
-                            <h4 className="text-lg font-semibold text-white flex items-center gap-3">
-                                <Save className="w-5 h-5 text-white/60" />
-                                새 툴 등록
-                            </h4>
-                            <button
-                                onClick={() => setShowAddModal(false)}
-                                className="text-white/50 hover:text-white"
-                            >✕</button>
+                <div className="hide-scrollbar -mx-1 overflow-x-auto overflow-y-hidden">
+                    <div className="px-1 mt-2 flex items-center gap-[3px] whitespace-nowrap">
+                        <button
+                            className={clsx('px-2 py-0.5 rounded-full border text-[10px] transition',
+                                filterLinked === 'all' ? 'bg-white/10 text-white/80 border-white/15' : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10')}
+                            onClick={() => setFilterLinked('all')}
+                        >
+                            전체
+                        </button>
+                        <button
+                            className={clsx('px-2 py-0.5 rounded-full border text-[10px] transition',
+                                filterLinked === 'linked' ? 'bg-indigo-500/80 text-white border-indigo-400' : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10')}
+                            onClick={() => setFilterLinked('linked')}
+                        >
+                            <Link2 className="inline w-3 h-3 mr-1" />
+                            연결
+                        </button>
+                        <button
+                            className={clsx('px-2 py-0.5 rounded-full border text-[10px] transition',
+                                filterLinked === 'unlinked' ? 'bg-white/10 text-white/85 border-white/15' : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10')}
+                            onClick={() => setFilterLinked('unlinked')}
+                        >
+                            <Link2Off className="inline w-3 h-3 mr-1" />
+                            미연결
+                        </button>
+
+                        {/* <span className="inline-block w-px h-3 bg-white/10 mx-1" /> */}
+
+                        <button
+                            className={clsx('px-2 py-0.5 rounded-full border text-[10px] transition',
+                                filterEnabled === 'all' ? 'bg-white/10 text-white/80 border-white/15' : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10')}
+                            onClick={() => setFilterEnabled('all')}
+                        >
+                            전체
+                        </button>
+                        <button
+                            className={clsx('px-2 py-0.5 rounded-full border text-[10px] transition',
+                                filterEnabled === 'on' ? 'bg-emerald-500/80 text-white border-emerald-400' : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10')}
+                            onClick={() => setFilterEnabled('on')}
+                        >
+                            <ToggleRight className="inline w-3 h-3 mr-1" />
+                            사용중
+                        </button>
+                        <button
+                            className={clsx('px-2 py-0.5 rounded-full border text-[10px] transition',
+                                filterEnabled === 'off' ? 'bg-white/10 text-white/85 border-white/15' : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10')}
+                            onClick={() => setFilterEnabled('off')}
+                        >
+                            <ToggleLeft className="inline w-3 h-3 mr-1" />
+                            꺼짐
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {loading ? (
+                <div className="space-y-2">
+                    {[0, 1, 2].map((i) => (
+                        <div key={i} className="rounded-xl p-3 ring-1 ring-white/10 bg-white/5">
+                            <div className="animate-pulse space-y-2">
+                                <div className="h-3 w-40 bg-white/10 rounded" />
+                                <div className="h-2 w-3/4 bg-white/10 rounded" />
+                                <div className="h-2 w-1/2 bg-white/10 rounded" />
+                            </div>
                         </div>
-
-                        <input
-                            className="w-full p-2 rounded bg-white/10 text-white text-sm"
-                            placeholder="툴 이름"
-                            value={form.name}
-                            onChange={e => handleFormChange('name', e.target.value)}
-                        />
-                        <select
-                            className="w-full p-2 rounded bg-white/10 text-white text-sm"
-                            value={form.type}
-                            onChange={e => handleFormChange('type', e.target.value)}
-                        >
-                            <option className="text-black" value="python">Python</option>
-                            <option className="text-black" value="rest">REST</option>
-                            <option className="text-black" value="powershell">PowerShell</option> {/* 필요에 따라 다른 옵션 추가 */}
-                        </select>
-                        <textarea
-                            rows={3}
-                            className="w-full p-2 rounded bg-white/10 text-white text-sm resize-none"
-                            placeholder={getPlaceholder(form.type)}
-                            value={form.command}
-                            onChange={e => handleFormChange('command', e.target.value)}
-                        />
-                        <select
-                            className="w-full p-2 rounded bg-white/10 text-white text-sm"
-                            value={form.status}
-                            onChange={e => handleFormChange('status', e.target.value as 'active' | 'inactive')}
-                        >
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-
-                        <label className="flex items-center gap-2">
-                            <input
-                                type="checkbox"
-                                checked={form.enabled}
-                                onChange={e => handleFormChange('enabled', e.target.checked)}
-                                className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                            />
-                            <span className="text-white text-sm">Enabled</span>
-                        </label>
-
-                        <div className="flex justify-end gap-2 pt-2">
-                            <button
-                                onClick={() => setShowAddModal(false)}
-                                className="text-xs text-white/50"
-                            >취소</button>
-                            <button
-                                onClick={addTool}
-                                className="text-xs text-indigo-300 flex items-center gap-1"
+                    ))}
+                </div>
+            ) : (
+                <div className="space-y-2">
+                    {filtered.map((tool) => {
+                        const linked = tool.id !== undefined && linkedToolIds.includes(tool.id)
+                        return (
+                            <div
+                                key={tool.id ?? tool.name}
+                                className="relative p-3 rounded-xl ring-1 ring-white/10 bg-white/5 hover:bg-white/[.07] transition overflow-hidden"
                             >
-                                <Save className="w-4 h-4" /> 등록
-                            </button>
-                        </div>
-                    </div>
-                </div>,
-                document.body
+                                <div
+                                    className="pointer-events-none absolute -inset-px opacity-0 hover:opacity-100 transition duration-500"
+                                    style={{
+                                        background:
+                                            'radial-gradient(1200px 200px at 10% -10%, rgba(99,102,241,0.18), transparent 40%), radial-gradient(800px 160px at 110% 120%, rgba(20,184,166,0.16), transparent 40%)'
+                                    }}
+                                />
+                                <div className="flex justify-between items-start gap-2 relative">
+                                    <div className="flex items-start gap-2 min-w-0">
+                                        <Wrench className="w-4 h-4 text-white/60 mt-[2px]" />
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-white text-[12px] font-semibold truncate">{tool.name}</span>
+                                                <span className="px-2 py-0.5 rounded-full text-[10px] border bg-white/10 text-white/70 border-white/15">
+                                                    {tool.type}
+                                                </span>
+                                                <span
+                                                    className={clsx(
+                                                        'px-2 py-0.5 rounded-full text-[10px] border',
+                                                        tool.enabled
+                                                            ? 'bg-emerald-500/15 text-emerald-100 border-emerald-400/30'
+                                                            : 'bg-white/10 text-white/70 border-white/15'
+                                                    )}
+                                                >
+                                                    {tool.enabled ? '사용중' : '꺼짐'}
+                                                </span>
+                                            </div>
+                                            <div className="text-white/55 text-[10px] mt-0.5 break-all flex items-center gap-1">
+                                                <Link2 className="w-3.5 h-3.5" />
+                                                <span>{tool.command}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            className={clsx(
+                                                'px-2 py-0.5 rounded-full text-[10px] border transition',
+                                                linked
+                                                    ? 'bg-indigo-500 text-white border-indigo-400'
+                                                    : 'bg-white/10 text-white/60 border-white/20 hover:bg-white/20'
+                                            )}
+                                            onClick={() => tool.id && handleToggleLink(tool.id)}
+                                            title={linked ? '연결 해제' : '연결'}
+                                        >
+                                            {linked ? '연결됨' : '미연결'}
+                                        </button>
+                                        <button
+                                            className="text-white/60 hover:text-white rounded p-1"
+                                            onClick={() => executeTool(tool)}
+                                            title="실행"
+                                        >
+                                            <Play className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            className="text-white/60 hover:text-white rounded p-1"
+                                            onClick={() => { setEditorMode('edit'); setEditingTool(tool); setEditorOpen(true) }}
+                                            title="편집"
+                                        >
+                                            <Pencil className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            className="text-white/60 hover:text-white rounded p-1"
+                                            onClick={() => toggleEnabled(tool)}
+                                            title={tool.enabled ? '비활성화' : '활성화'}
+                                        >
+                                            {tool.enabled
+                                                ? <ToggleRight className="w-5 h-5 text-indigo-400" />
+                                                : <ToggleLeft className="w-5 h-5 text-white/50" />
+                                            }
+                                        </button>
+                                        <button
+                                            className="text-white/60 hover:text-rose-400 rounded p-1"
+                                            onClick={() => tool.id && confirmDelete(tool.id, tool.name)}
+                                            title="삭제"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 mt-2">
+                                    {tool.enabled
+                                        ? <CheckCircle className="w-4 h-4 text-emerald-400" />
+                                        : <XCircle className="w-4 h-4 text-rose-400" />
+                                    }
+                                    <span
+                                        className={clsx(
+                                            'text-[10px] font-medium',
+                                            tool.enabled ? 'text-emerald-300' : 'text-rose-300'
+                                        )}
+                                    >
+                                        {tool.enabled ? 'Active' : 'Inactive'}
+                                    </span>
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
             )}
 
-            {showEditModal && createPortal(
-                <div
-                    className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
-                    onClick={() => setShowEditModal(false)}
-                >
-                    <div
-                        className="bg-[#2c2c3d] rounded-lg p-6 space-y-4 w-[90%] max-w-sm max-h-[90vh] overflow-auto"
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <div className="flex justify-between items-center">
-                            <h4 className="text-lg font-semibold text-white flex items-center gap-3">
-                                <Save className="w-5 h-5 text-white/60" />
-                                툴 수정
-                            </h4>
-                            <button
-                                onClick={() => setShowEditModal(false)}
-                                className="text-white/50 hover:text-white"
-                            >✕</button>
-                        </div>
-
-                        <input className="w-full p-2 rounded bg-white/10 text-white text-sm"
-                            placeholder="툴 이름"
-                            value={form.name}
-                            onChange={e => handleFormChange('name', e.target.value)}
-                        />
-                        <input className="w-full p-2 rounded bg-white/10 text-white text-sm"
-                            placeholder="타입 (예: python, rest)"
-                            value={form.type}
-                            onChange={e => handleFormChange('type', e.target.value)}
-                        />
-                        <input className="w-full p-2 rounded bg-white/10 text-white text-sm"
-                            placeholder="커맨드"
-                            value={form.command}
-                            onChange={e => handleFormChange('command', e.target.value)}
-                        />
-                        <select className="w-full p-2 rounded bg-white/10 text-white text-sm"
-                            value={form.status}
-                            onChange={e => handleFormChange('status', e.target.value as 'active' | 'inactive')}
-                        >
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
-
-                        <label className="flex items-center gap-2">
-                            <input type="checkbox" checked={form.enabled}
-                                onChange={e => handleFormChange('enabled', e.target.checked)}
-                                className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                            <span className="text-white text-sm">Enabled</span>
-                        </label>
-
-                        <div className="flex justify-end gap-2 pt-2">
-                            <button onClick={() => setShowEditModal(false)} className="text-xs text-white/50">취소</button>
-                            <button onClick={() => editTool(form.id!)} className="text-xs text-indigo-300 flex items-center gap-1">
-                                <Save className="w-4 h-4" /> 수정 완료
-                            </button>
-                        </div>
-                    </div>
-                </div>,
-                document.body
+            {editorOpen && (
+                <ToolEditorModal
+                    open={editorOpen}
+                    mode={editorMode}
+                    initial={editingTool}
+                    onClose={() => setEditorOpen(false)}
+                    onTest={async (draft) => {
+                        // 모달 안 “테스트 실행”
+                        const fake: Tool = { ...draft, id: draft.id ?? -1 }
+                        // ToolsPanel의 실행 로직 재사용
+                        await (async () => {
+                            if (!fake.enabled) fake.enabled = true
+                            await executeTool(fake)
+                        })()
+                    }}
+                    onSubmit={async (draft) => {
+                        if (editorMode === 'add') {
+                            const req = createTool(draft)
+                            const data = await toast.promise(req as unknown as Promise<Tool>, {
+                                loading: { description: '도구 등록 중…', compact: true },
+                                success: { description: '도구가 추가되었습니다.', compact: true },
+                                error: { description: '도구 등록 실패', compact: true },
+                            })
+                            setTools((prev) => [...prev, data])
+                        } else if (editorMode === 'edit' && draft.id != null) {
+                            const req = updateTool(draft.id, draft)
+                            const data = await toast.promise(req as unknown as Promise<Tool>, {
+                                loading: { description: '수정 중…', compact: true },
+                                success: { description: '도구가 수정되었습니다.', compact: true },
+                                error: { description: '도구 수정 실패', compact: true },
+                            })
+                            setTools((prev) => prev.map((t) => (t.id === data.id ? data : t)))
+                        }
+                        setEditorOpen(false)
+                    }}
+                />
             )}
+
+            <style jsx>{`
+                .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+                .hide-scrollbar::-webkit-scrollbar { display: none; }
+            `}</style>
         </div>
     )
 }

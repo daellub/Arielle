@@ -23,5 +23,5 @@ export function useEmotionLabel(emotion?: string): string {
         contemplative: '🤔 사색'
     }
 
-    return emotion ? (emotionMap[emotion] ?? '🙂 중립') : '🙂 중립'
+    return emotion ? (emotionMap[emotion] ?? '중립') : '중립'
 }

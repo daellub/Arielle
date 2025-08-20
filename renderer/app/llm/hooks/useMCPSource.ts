@@ -1,74 +1,76 @@
 // app/llm/hooks/useMCPSource.ts
-import axios from 'axios'
+import axios, { AxiosError } from 'axios'
 
-const API_BASE_URL = 'http://localhost:8500/mcp/api'
+export interface SourceCommon {
+    id: number
+    name: string
+    enabled: boolean
+    [key: string]: any
+}
+export type LocalSource = SourceCommon & { kind: 'local' }
+export type RemoteSource = SourceCommon & { kind: 'remote' }
 
-export const getLocalSources = async () => {
+export type Result<T> =
+    | { ok: true; data: T; status: number }
+    | { ok: false; error: string; status?: number }
+
+const MCP_BASE =
+    (process.env.NEXT_PUBLIC_MCP_BASE_URL as string) ?? 'http://localhost:8500'
+
+const api = axios.create({
+    baseURL: `${MCP_BASE}/mcp/api`,
+    timeout: 10000,
+})
+
+async function request<T>(
+    method: 'get' | 'post' | 'patch' | 'delete',
+    url: string,
+    body?: any,
+    opts?: { signal?: AbortSignal }
+): Promise<Result<T>> {
     try {
-        const response = await axios.get(`${API_BASE_URL}/local-sources`)
-        return response.data
-    } catch (error) {
-        console.error('Error fetching local sources:', error)
+        const res = await api.request<T>({
+            method,
+            url,
+            data: body,
+            signal: opts?.signal,
+        })
+        return { ok: true, data: res.data, status: res.status }
+    } catch (e) {
+        const err = e as AxiosError<any>
+        const status = err.response?.status
+        const msg =
+            err.response?.data?.message ??
+            err.message ??
+            '요청 처리 중 문제가 발생하였습니다.'
+        return { ok: false, error: msg, status }
     }
 }
 
-export const getRemoteSources = async () => {
-    try {
-        const response = await axios.get(`${API_BASE_URL}/remote-sources`)
-        return response.data
-    } catch (error) {
-        console.error('Error fetching remote sources:', error)
+function makeSourceClient<T extends SourceCommon>(resource: 'local-source' | 'remote-source') {
+    return {
+        list: (opts?: { signal?: AbortSignal }) =>
+            request<T[]>('get', `/${resource}`, undefined, opts),
+
+        create: (source: Partial<T>, opts?: { signal?: AbortSignal }) =>
+            request<T>('post', `/${resource}`, source, opts),
+
+        update: (id: number, patch: Partial<T>, opts?: { signal?: AbortSignal }) =>
+            request<T>('patch', `/${resource}/${id}`, patch, opts),
+
+        remove: (id: number, opts?: { signal?: AbortSignal }) =>
+            request<void>('delete', `/${resource}/${id}`, undefined, opts),
     }
 }
 
-export const addLocalSource = async (source: any) => {
-    try {
-        const response = await axios.post(`${API_BASE_URL}/local-sources`, source)
-        return response.data
-    } catch (error) {
-        console.error('Error adding local source:', error)
-    }
-}
+const local = makeSourceClient<LocalSource>('local-source')
+const remote = makeSourceClient<RemoteSource>('remote-source')
 
-export const addRemoteSource = async (source: any) => {
-    try {
-        const response = await axios.post(`${API_BASE_URL}/remote-sources`, source)
-        return response.data
-    } catch (error) {
-        console.error('Error adding remote source:', error)
-    }
-}
-
-export const updateLocalSource = async (id: number, source: any) => {
-    try {
-        const response = await axios.patch(`${API_BASE_URL}/local-sources/${id}`, source)
-        return response.data
-    } catch (error) {
-        console.error('Error updating local source:', error)
-    }
-}
-
-export const updateRemoteSource = async (id: number, source: any) => {
-    try {
-        const response = await axios.patch(`${API_BASE_URL}/remote-sources/${id}`, source)
-        return response.data
-    } catch (error) {
-        console.error('Error updating remote source:', error)
-    }
-}
-
-export const deleteLocalSource = async (id: number) => {
-    try {
-        await axios.delete(`${API_BASE_URL}/local-sources/${id}`)
-    } catch (error) {
-        console.error('Error deleting local source:', error)
-    }
-}
-
-export const deleteRemoteSource = async (id: number) => {
-    try {
-        await axios.delete(`${API_BASE_URL}/remote-sources/${id}`)
-    } catch (error) {
-        console.error('Error deleting remote source:', error)
-    }
-}
+export const getLocalSources = local.list
+export const getRemoteSources = remote.list
+export const addLocalSource = local.create
+export const addRemoteSource = remote.create
+export const updateLocalSource = local.update
+export const updateRemoteSource = remote.update
+export const deleteLocalSource = local.remove
+export const deleteRemoteSource = remote.remove

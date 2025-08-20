@@ -1,5 +1,5 @@
 // app/llm/features/store/useLLMStore.ts
-import { create } from 'zustand'
+import { createWithEqualityFn } from 'zustand/traditional';
 import { subscribeWithSelector } from 'zustand/middleware'
 
 type Role = 'user' | 'assistant'
@@ -19,73 +19,127 @@ export interface LLMChatMessage {
     modelId?: string
 }
 
-interface LLMChatStore {
+export interface LLMChatStore {
     messages: LLMChatMessage[]
+    live: LLMChatMessage | null
+
     streaming: boolean
     autoSpeakEnabled: boolean
-    setAutoSpeakEnabled: (v: boolean) => void
 
+    idxByInteraction: Record<number, number>
+
+    setAutoSpeakEnabled: (v: boolean) => void
     setStreaming: (v: boolean) => void
+
     addMessage: (msg: LLMChatMessage) => void
+
     addStreamingChunk: (role: Role, chunk: string) => void
+
     finalizeMessage: () => void
+
     updateEmotionTone: (interactionId: number, emotion: string, tone: string, blendshape: string) => void
+    
     resetMessages: () => void
+
+    setFeedbackByIndex: (index: number, rating: 'up' | 'down') => void
 }
 
-export const useLLMStore = create<LLMChatStore>()(
-    subscribeWithSelector<LLMChatStore>((set) => ({
+export const useLLMStore = createWithEqualityFn<LLMChatStore>()(
+    subscribeWithSelector<LLMChatStore>((set, get) => ({
         messages: [],
-        streaming: false,
-        autoSpeakEnabled: true,
-        setAutoSpeakEnabled: (v) => set({ autoSpeakEnabled: v }),
+        live: null,
 
+        streaming: false,
+        autoSpeakEnabled: false,
+
+        idxByInteraction: {},
+
+        setAutoSpeakEnabled: (v) => set({ autoSpeakEnabled: v }),
         setStreaming: (v) => set({ streaming: v }),
 
         addMessage: (msg) => 
-            set((state) => ({ messages: [...state.messages, msg] })),
+            set((state) => {
+                const next = [...state.messages, msg]
+                const map = { ...state.idxByInteraction }
+                if (typeof msg.interactionId === 'number') {
+                    map[msg.interactionId] = next.length - 1
+                }
+                return { messages: next, idxByInteraction: map }
+            }),
 
         addStreamingChunk: (role, chunk) => {
             set((state) => {
-                const last = state.messages[state.messages.length - 1]
-                if (last && last.role === role) {
-                    const newMessage = last.message + chunk
-                    // console.log('[StreamChunk APPEND]', { old: last.message, chunk, newMessage })
-                    const updatedMessages = [...state.messages]
-                    updatedMessages[updatedMessages.length - 1] = {
-                        ...last,
-                        message: newMessage
+                if (state.live && state.live.role === role) {
+                    return {
+                        live: { ...state.live, message: state.live.message + chunk },
+                        streaming: true,
                     }
-                    return { messages: updatedMessages}
-                } else {
-                    console.log('[StreamChunk NEW]', { role, chunk })
-                    return { messages: [...state.messages, { role, message: chunk }] }
+                }
+
+                return {
+                    live: { role, message: chunk, isFinal: false },
+                    streaming: true,
                 }
             })
         },
         
         finalizeMessage: () =>
             set((state) => {
-                const msgs = [...state.messages]
-                const last = msgs[msgs.length - 1]
-                if (last?.role === 'assistant') {
-                    last.isFinal = true
+                if (state.live) {
+                    const finalized: LLMChatMessage = { ...state.live, isFinal: true }
+                    const next = [...state.messages, finalized]
+                    const map = { ...state.idxByInteraction }
+                    if (typeof finalized.interactionId === 'number') {
+                        map[finalized.interactionId] = next.length - 1
+                    }
+                    return { messages: next, live: null, streaming: false, idxByInteraction: map }
                 }
-                return { messages: msgs }
+
+                const msgs = state.messages
+                if (msgs.length > 0) {
+                    const last = msgs[msgs.length - 1]
+                    if (last.role === 'assistant' && !last.isFinal) {
+                        const updated = [...msgs]
+                        updated[updated.length - 1] = { ...last, isFinal: true }
+                        return { messages: updated, streaming: false }
+                    }
+                }
+                return { streaming: false }
             }),
 
         updateEmotionTone: (interactionId, emotion, tone, blendshape) =>
             set((state) => {
-                const updated = state.messages.map((msg) => {
-                    if (msg.interactionId === interactionId) {
-                        const newMsg = { ...msg, emotion, tone, blendshape }
-                        return newMsg
+                let messages: LLMChatMessage[] | undefined
+                const idx = state.idxByInteraction[interactionId]
+
+                let live = state.live
+                if (live?.interactionId === interactionId) {
+                    live = { ...live, emotion, tone, blendshape }
+                }
+
+                if (typeof idx === 'number') {
+                    const target = state.messages[idx]
+                    if (target) {
+                        messages = [...state.messages]
+                        messages[idx] = { ...target, emotion, tone, blendshape }
                     }
-                    return msg
-                })
-                return { messages: updated }
+                }
+
+                return {
+                    live,
+                    messages: messages ?? state.messages,
+                }
             }),
 
-        resetMessages: () => set({ messages: [] })
+        resetMessages: () => set({ messages: [], live: null, idxByInteraction: {}, streaming: false }),
+    
+        setFeedbackByIndex: (index, rating) =>
+            set((state) => {
+                const list = state.messages
+                if (!list[index] || list[index].feedback) return {}
+                const updated = [...list]
+                updated[index] = { ...updated[index], feedback: rating }
+                return { messages: updated }
+            }),
     }))
 )

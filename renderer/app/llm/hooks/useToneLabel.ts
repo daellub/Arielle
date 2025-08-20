@@ -22,5 +22,5 @@ export function useToneLabel(tone?: string): string {
         teasing: '😜 놀림'
     }
 
-    return tone ? (toneMap[tone] ?? '🗨️ 중립') : '🗨️ 중립'
+    return tone ? (toneMap[tone] ?? '중립') : '중립'
 }

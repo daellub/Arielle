@@ -11,6 +11,12 @@
   --font-DungGeunMo: 'DungGeunMo', 'sans-serif';
   --font-omyu_pretty: 'omyu_pretty', 'sans-serif';
   --font-D2Coding: 'D2Coding', 'sans-serif'
+
+  --spin-w: 28px;
+  --spin-sep: rgba(255,255,255,.14);
+  --spin-bg:  linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.05));
+  --spin-bg-h:linear-gradient(180deg,rgba(176,164,255,.22),rgba(176,164,255,.10));
+  --spin-bg-a:linear-gradient(180deg,rgba(176,164,255,.32),rgba(176,164,255,.16));
 }
 
 /* 메인 폰트 */
@@ -295,6 +301,54 @@
       rgba(90, 130, 250, 0.50),   /* 더 진한 파랑 */
       rgba(200, 220, 255, 0.65)   /* 조금 진한 연파랑 */
     );
+}
+
+input[type="number"]{
+  color-scheme: dark;
+  padding-right: var(--spin-w);
+  border-radius: .75rem;
+  background: linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.04));
+  box-shadow: inset 0 1px rgba(255,255,255,.06), inset 0 -1px rgba(0,0,0,.25);
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button{
+  width: var(--spin-w);
+  height: auto;
+  margin: 0;
+  border-left: 1px solid var(--spin-sep);
+  border-radius: 0 .6rem .6rem 0;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.09), rgba(255,255,255,.05)),
+    linear-gradient(to bottom, transparent 49%, var(--spin-sep) 50%, transparent 51%);
+  background-repeat: no-repeat;
+  background-size: auto, 100% 100%;
+  filter: invert(.12) brightness(1.2) contrast(1.2);
+  padding: 0;
+  cursor: pointer;
+}
+
+input[type="number"]::-webkit-inner-spin-button:hover{
+  background:
+    linear-gradient(180deg, rgba(176,164,255,.18), rgba(176,164,255,.10)),
+    linear-gradient(to bottom, transparent 49%, var(--spin-sep) 50%, transparent 51%);
+  filter: invert(.12) brightness(1.35) contrast(1.25);
+}
+input[type="number"]::-webkit-inner-spin-button:active{
+  background:
+    linear-gradient(180deg, rgba(176,164,255,.28), rgba(176,164,255,.16)),
+    linear-gradient(to bottom, transparent 49%, var(--spin-sep) 50%, transparent 51%);
+  filter: invert(.12) brightness(1.45) contrast(1.3);
+}
+
+@-moz-document url-prefix() {
+  input[type="number"]{ -moz-appearance: textfield; }
+}
+
+.no-native-spin::-webkit-inner-spin-button,
+.no-native-spin::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+@-moz-document url-prefix() {
+    .no-native-spin { -moz-appearance: textfield; }
 }
 
 @keyframes chromaPattern {

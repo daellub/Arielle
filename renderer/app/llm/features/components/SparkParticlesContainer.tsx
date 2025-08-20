@@ -1,35 +1,57 @@
 // app/llm/features/components/SparkParticlesContainer.tsx
-import React, { useEffect, useState } from 'react'
-import SparkParticle from '../effects/SparkParticle'
+'use client'
+
+import React, { memo, useMemo } from 'react'
 import styles from '@/app/styles/SparkEffect.module.css'
 
-interface ParticleData {
-    top: string
-    left: string
-    size: string
-    delay: string
-    duration: string
+
+type Props = {
+    count?: number
+    seed?: number
+    className?: string
 }
 
-export default function SparkParticlesContainer() {
-    const [particles, setParticles] = useState<ParticleData[]>([])
+function mulberry32(a: number) {
+    return function () {
+        let t = (a += 0x6d2b79f5)
+        t = Math.imul(t ^ (t >>> 15), t | 1)
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+    }
+}
 
-    useEffect(() => {
-        const generated = Array.from({ length: 25 }, () => ({
-            top: `${Math.random() * 100}%`,
-            left: `${Math.random() * 100}%`,
-            size: `${Math.random() * 4 + 6}px`,
-            delay: `${Math.random() * 5}s`,
-            duration: `${5 + Math.random() * 5}s`,
-        }))
-        setParticles(generated)
-    }, [])
+function SparkParticlesContainer({ count = 24, seed = 1337, className }: Props) {
+    const particles = useMemo(() => {
+        const rnd = mulberry32(seed)
+        return Array.from({ length: count }, (_, i) => {
+            const top = `${Math.floor(rnd() * 100)}%`
+            const left = `${Math.floor(rnd() * 100)}%`
+            const size = `${6 + Math.floor(rnd() * 7)}px`
+            const delay = `${(rnd() * 5).toFixed(2)}s`
+            const dur = `${(5 + rnd() * 5).toFixed(2)}s`
+            const amp = `${12 + Math.floor(rnd() * 18)}px`
+            return { key: i, top, left, size, delay, dur, amp }
+        })
+    }, [count, seed])
 
     return (
-        <div className={styles['spark-container']}>
-            {particles.map((p, i) => (
-                <SparkParticle key={i} {...p} />
+        <div className={`${styles.container} ${className ?? ''}`}>
+            {particles.map((p) => (
+                <span
+                    key={p.key}
+                    className={styles.spark}
+                    style={{
+                        ['--y' as any]: p.top,
+                        ['--x' as any]: p.left,
+                        ['--size' as any]: p.size,
+                        ['--delay' as any]: p.delay,
+                        ['--dur' as any]: p.dur,
+                        ['--amp' as any]: p.amp,
+                    }}
+                />
             ))}
         </div>
     )
 }
+
+export default memo(SparkParticlesContainer)

@@ -1,11 +1,19 @@
 // app/llm/features/store/useMCPStore.ts
 import { create } from 'zustand'
+import { shallow } from 'zustand/shallow'
 
 type Strategy = 'None' | 'Window' | 'Summary' | 'Hybrid'
 
 interface MemoryPrompt {
     id: number
     content: string
+    enabled: boolean
+}
+
+export interface ToolConfig {
+    name: string
+    type: string
+    command: string
     enabled: boolean
 }
 
@@ -18,9 +26,7 @@ interface MCPConfig {
     remote_sources: number[]
     prompt: string
     linkedPromptIds: number[]
-    setLinkedPromptIds: (ids: number[]) => void
     linkedToolIds: number[]
-    setLinkedToolIds: (ids: number[]) => void
     memory: {
         strategy: Strategy
         maxTokens: number
@@ -34,20 +40,28 @@ interface MCPConfig {
         topP: number
         repetitionPenalty: number
     }
-    tools: {
-        name: string
-        type: string
-        command: string
-        enabled: boolean
-    }[]
+    tools: ToolConfig[]
 }
 
-interface MCPStore {
-    configMap: { [modelId: string]: MCPConfig }
+export interface MCPStore {
+    configMap: Record<string, MCPConfig>
     activeModelId: string | null
+
     setActiveModel: (modelId: string) => void
-    updateConfig: (modelId: string, update: Partial<MCPConfig>) => void
     getCurrentConfig: () => MCPConfig | null
+
+    upsertConfig: (modelId: string, next: Partial<MCPConfig>) => void
+    updateCurrent: (next: Partial<MCPConfig>) => void
+
+    updateConfig: (modelId: string, next: Partial<MCPConfig>) => void
+
+    updateMemory: (next: Partial<MCPConfig['memory']>) => void
+    updateSampling: (next: Partial<MCPConfig['sampling']>) => void
+    setLinkedPromptIds: (ids: number[]) => void
+    setLinkedToolIds: (ids: number[]) => void
+
+    toggleTool: (name: string, enabled: boolean) => void
+    setToolList: (tools: ToolConfig[]) => void
 }
 
 function createDefaultConfig(): MCPConfig {
@@ -60,9 +74,7 @@ function createDefaultConfig(): MCPConfig {
         remote_sources: [],
         prompt: '',
         linkedPromptIds: [],
-        setLinkedPromptIds: () => {},
         linkedToolIds: [],
-        setLinkedToolIds: () => {},
         memory: {
             strategy: 'Window',
             maxTokens: 2048,
@@ -80,24 +92,142 @@ function createDefaultConfig(): MCPConfig {
     }
 }
 
+function mergeConfig(base: MCPConfig, patch: Partial<MCPConfig>): MCPConfig {
+    return {
+        ...base,
+        ...patch,
+        memory: patch.memory ? { ...base.memory, ...patch.memory } : base.memory,
+        sampling: patch.sampling ? { ...base.sampling, ...patch.sampling } : base.sampling,
+        tools: patch.tools ?? base.tools,
+        linkedPromptIds: patch.linkedPromptIds ?? base.linkedPromptIds,
+        linkedToolIds: patch.linkedToolIds ?? base.linkedToolIds,
+        integrations: patch.integrations ?? base.integrations,
+        local_sources: patch.local_sources ?? base.local_sources,
+        remote_sources: patch.remote_sources ?? base.remote_sources,
+    }
+}
+
 export const useMCPStore = create<MCPStore>((set, get) => ({
     configMap: {},
     activeModelId: null,
-    setActiveModel: (modelId) => set({ activeModelId: modelId }),
-    updateConfig: (modelId, update) => set((state) => {
-        const existing = state.configMap[modelId] || createDefaultConfig()
-        return {
-            configMap: {
-                ...state.configMap,
-                [modelId]: {
-                    ...existing,
-                    ...update
+
+    setActiveModel: (modelId) =>
+        set((state) => {
+            if (!state.configMap[modelId]) {
+                return {
+                    activeModelId: modelId,
+                    configMap: {
+                        ...state.configMap,
+                        [modelId]: createDefaultConfig()
+                    },
                 }
             }
-        }
-    }),
+            return { activeModelId: modelId }
+        }),
+
     getCurrentConfig: () => {
         const id = get().activeModelId
         return id ? get().configMap[id] || null : null
-    }
+    },
+
+    upsertConfig: (modelId, next) =>
+        set((state) => {
+            const prev = state.configMap[modelId] ?? createDefaultConfig()
+            const merged = mergeConfig(prev, next)
+            if (prev === merged) return state
+            return { configMap: { ...state.configMap, [modelId]: merged } }
+        }),
+
+    updateConfig: (modelId, patch) => set((s) => {
+        const prev = s.configMap[modelId] ?? createDefaultConfig()
+        const next = mergeConfig(prev, patch)
+        return { configMap: { ...s.configMap, [modelId]: next } }
+    }),
+
+    updateCurrent: (next) => {
+        const id = get().activeModelId
+        if (!id) return
+        get().upsertConfig(id, next)
+    },
+
+    updateMemory: (next) => {
+        const id = get().activeModelId
+        if (!id) return
+        set((state) => {
+            const prev = state.configMap[id] ?? createDefaultConfig()
+            const merged = { ...prev, memory: { ...prev.memory, ...next } }
+            return { configMap: { ...state.configMap, [id]: merged } }
+        })
+    },
+
+    updateSampling: (next) => {
+        const id = get().activeModelId
+        if (!id) return
+        set((state) => {
+            const prev = state.configMap[id] ?? createDefaultConfig()
+            const merged = { ...prev, sampling: { ...prev.sampling, ...next } }
+            return { configMap: { ...state.configMap, [id]: merged } }
+        })
+    },
+
+    setLinkedPromptIds: (ids) => {
+        const id = get().activeModelId
+        if (!id) return
+        set((state) => {
+            const prev = state.configMap[id] ?? createDefaultConfig()
+            if (shallow(prev.linkedPromptIds, ids)) return state
+            return {
+                configMap: {
+                    ...state.configMap,
+                    [id]: { ...prev, linkedPromptIds: [...ids] },
+                },
+            }
+        })
+    },
+
+    setLinkedToolIds: (ids) => {
+        const id = get().activeModelId
+        if (!id) return
+        set((state) => {
+            const prev = state.configMap[id] ?? createDefaultConfig()
+            if (shallow(prev.linkedToolIds, ids)) return state
+            return {
+                configMap: {
+                    ...state.configMap,
+                    [id]: { ...prev, linkedToolIds: [...ids] },
+                },
+            }
+        })
+    },
+
+    toggleTool: (name, enabled) => {
+        const id = get().activeModelId
+        if (!id) return
+        set((state) => {
+            const prev = state.configMap[id] ?? createDefaultConfig()
+            const tools = prev.tools.map((t) => (t.name === name ? { ...t, enabled } : t))
+            return { configMap: { ...state.configMap, [id]: { ...prev, tools } } }
+        })
+    },
+
+    setToolList: (tools) => {
+        const id = get().activeModelId
+        if (!id) return
+        set((state) => {
+            const prev = state.configMap[id] ?? createDefaultConfig()
+            return { configMap: { ...state.configMap, [id]: { ...prev, tools } } }
+        })
+    },
 }))
+
+export function useCurrentConfig<T>(
+    selector: (cfg: MCPConfig | null) => T
+) {
+    return useMCPStore(
+        (s) => {
+            const id = s.activeModelId
+            const cfg = id ? s.configMap[id] ?? null : null
+            return selector(cfg)
+        }
+    )
+}

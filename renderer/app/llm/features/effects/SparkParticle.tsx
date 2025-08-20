@@ -1,5 +1,5 @@
 // app/llm/features/effects/SparkParticle.tsx
-import React from 'react'
+import React, { memo } from 'react'
 import styles from '@/app/styles/SparkEffect.module.css'
 
 interface SparkParticleProps {
@@ -8,23 +8,22 @@ interface SparkParticleProps {
     size: string
     delay: string
     duration: string
+    amp?: string
 }
-
-export default function SparkParticle({ top, left, size, delay, duration }: SparkParticleProps) {
+export default memo(function SparkParticle({
+    top, left, size, delay, duration, amp = '18px',
+}: SparkParticleProps) {
     return (
-        <div
-            className={styles['spark-particle']}
+        <span
+            className={styles.spark}
             style={{
-                top,
-                left,
-                width: size,
-                height: size,
-                animationDelay: delay,
-                animationDuration: duration,
-                backgroundColor: 'rgba(255, 240, 180, 0.2)',
-                filter: 'blur(6px)',
-                opacity: 0.4,
+                ['--y' as any]: top,
+                ['--x' as any]: left,
+                ['--size' as any]: size,
+                ['--delay' as any]: delay,
+                ['--dur' as any]: duration,
+                ['--amp' as any]: amp,
             }}
         />
     )
-}
+})
