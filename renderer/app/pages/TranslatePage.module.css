@@ -21,27 +21,14 @@
 }
 
 @keyframes pulse {
-    0%, 100% {
-        opacity: 0.08;
-    }
-    50% {
-        opacity: 0.15;
-    }
+    0%, 100% { opacity: 0.08; }
+    50% { opacity: 0.16; }
 }
 
 @keyframes float {
-    0% {
-        transform: translateY(0px);
-        opacity: 0.2;
-    }
-    50% {
-        transform: translateY(-10px);
-        opacity: 0.4;
-    }
-    100% {
-        transform: translateY(0px);
-        opacity: 0.2;
-    }
+    0%   { transform: translateY(0px);   opacity: 0.2; }
+    50%  { transform: translateY(-10px); opacity: 0.4; }
+    100% { transform: translateY(0px);   opacity: 0.2; }
 }
 
 .sparkle {
@@ -55,4 +42,9 @@
     animation: float 4s ease-in-out infinite;
     pointer-events: none;
     z-index: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .container::before { animation: none; }
+    .sparkle { animation: none; opacity: 0.18; }
 }

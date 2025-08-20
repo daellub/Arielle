@@ -219,6 +219,13 @@
   }
 }
 
+@keyframes glowPulse {
+  0%   { box-shadow: 0 0 10px rgba(99,102,241,.32), 0 0 18px rgba(99,102,241,.42) }
+  50%  { box-shadow: 0 0 4px rgba(99,102,241,.25), 0 0 10px rgba(99,102,241,.32) }
+  100% { box-shadow: 0 0 10px rgba(99,102,241,.32), 0 0 18px rgba(99,102,241,.42) }
+}
+
+
 .animate-drop-reveal {
   animation: dropReveal 0.8s ease-out forwards;
 }
@@ -227,8 +234,8 @@
     display: none;
 }
 .scrollbar-hide {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;     /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }
 
 .scrollArea::-webkit-scrollbar {
@@ -271,6 +278,28 @@
 
 .scrollLLMArea::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(to bottom, rgba(222, 195, 255, 0.5), rgba(255, 255, 255, 0.15));
+}
+
+/* 홈 스크롤 패널 */
+.scrollHomeArea::-webkit-scrollbar {
+    width: 8px;
+}
+
+.scrollHomeArea::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 12px;
+}
+
+.scrollHomeArea::-webkit-scrollbar-thumb {
+    background: linear-gradient(to bottom, rgba(129, 140, 248, 0.4), rgba(236, 72, 153, 0.25));
+    border-radius: 12px;
+    backdrop-filter: blur(8px);
+    box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.15);
+    transition: background 0.3s ease;
+}
+
+.scrollHomeArea::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(to bottom, rgba(99, 102, 241, 0.55), rgba(217, 70, 239, 0.35));
 }
 
 /* HF 스크롤바 */

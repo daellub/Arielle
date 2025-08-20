@@ -7,12 +7,11 @@ import Image from 'next/image'
 import styles from '@/app/styles/MagicCircle.module.css'
 
 function usePageVisible() {
-    const [visible, setVisible] = useState(
-        typeof document !== 'undefined' ? !document.hidden : true
-    )
+    const [visible, setVisible] = useState(true)
 
     useEffect(() => {
         const onChange = () => setVisible(!document.hidden)
+        setVisible(!document.hidden)
         document.addEventListener('visibilitychange', onChange)
         return () => document.removeEventListener('visibilitychange', onChange)
     }, [])
