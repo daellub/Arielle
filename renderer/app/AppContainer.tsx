@@ -25,6 +25,7 @@ export default function AppContainer() {
     const prevTab = useRef<string>(selectedTab)
 
     const HomePage = dynamic(() => import('./pages/HomePage'), { ssr: false })
+    const DashboardPage = dynamic(() => import('./pages/DashboardPage'), { ssr: false })
     const ASRPage = dynamic(() => import('./pages/ASRPage'), { ssr: false })
     const TranslatePage = dynamic(() => import('./pages/TranslatePage'), { ssr: false })
     const LLMPage = dynamic(() => import('./pages/LLMPage'), { ssr: false })
@@ -53,6 +54,7 @@ export default function AppContainer() {
                 <div className="absolute inset-0 z-10">
                     {[
                         { key: 'Home', node: getCached('Home', <HomePage selectedTab={selectedTab} />) },
+                        { key: 'Dashboard', node: getCached('Dashboard', <DashboardPage />) },
                         { key: 'ASR', node: getCached('ASR', <ASRPage />) },
                         { key: 'Translate', node: getCached('Translate', <TranslatePage />) },
                         { key: 'LLM', node: getCached('LLM', <LLMPage />) },

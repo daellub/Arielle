@@ -198,7 +198,7 @@ export default function HomePage({ selectedTab }: { selectedTab: string }) {
                                     </span>
                                 </div>
 
-                                <h1 className="text-3xl md:text-5xl font-D2Coding font-extrabold text-gray-900 dark:text-white leading-tight">
+                                <h1 className="text-3xl md:text-5xl font-omyu_pretty font-extrabold text-gray-900 dark:text-white leading-tight">
                                     Connect with{' '}
                                     <span className="font-omyu_pretty bg-gradient-to-r from-indigo-500 to-fuchsia-500 bg-clip-text text-transparent">
                                         Arielle
