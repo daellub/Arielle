@@ -30,7 +30,7 @@ const items = [
 ]
 
 const preloadMap: Record<string, () => void> = {
-    Home:       () => import('@/app/pages/HomePage'),
+    Home:       () => import('@/app/pages/ExperienceHome'),
     Dashboard:  () => Promise.resolve(),
     Security:   () => Promise.resolve(),
     ASR:        () => import('@/app/pages/ASRPage'),

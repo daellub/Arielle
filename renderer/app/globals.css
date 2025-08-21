@@ -1,22 +1,47 @@
 /* app/globals.css */
 
 @import "tailwindcss";
+@import './styles/ocean.css';
 
 :root {
   --font-main: 'MapoPeacefull', 'sans-serif';
   --font-hakgyo: 'HakgyoansimWoojuR', 'sans-serif';
   --font-gowun: 'GowunDodum-Regular', 'sans-serif';
   --font-circle: 'TheCircleM', 'sans-serif';
+  --font-RosieBrown: 'RosieBrown', 'sans-serif';
   --font-S-CoreDream-3Light: 'S-CoreDream-3Light', 'sans-serif';
   --font-DungGeunMo: 'DungGeunMo', 'sans-serif';
   --font-omyu_pretty: 'omyu_pretty', 'sans-serif';
-  --font-D2Coding: 'D2Coding', 'sans-serif'
+  --font-D2Coding: 'D2Coding', 'sans-serif';
+  --font-HelloHoney: 'HelloHoney', 'sans-serif';
+  --font-QuietlyRose: 'QuietlyRose', 'sans-serif';
+  --font-Saturday: 'Saturday', 'sans-serif';
+  --font-Skittle: 'Skittle', 'sans-serif';
+  --font-Southampton: 'Southampton', 'sans-serif';
 
   --spin-w: 28px;
   --spin-sep: rgba(255,255,255,.14);
   --spin-bg:  linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,.05));
   --spin-bg-h:linear-gradient(180deg,rgba(176,164,255,.22),rgba(176,164,255,.10));
   --spin-bg-a:linear-gradient(180deg,rgba(176,164,255,.32),rgba(176,164,255,.16));
+
+  --bg-0: #f4f1fa;
+  --bg-1: #e8dbf3;
+  --bg-2: #c8bdeb;
+  --bg-3: #a99fd7;
+
+  --ink-0: #e7d8ff;
+  --ring-outer: rgba(164, 154, 255, 0.18);
+  --ring-inner: rgba(200, 185, 255, 0.28);
+
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-brd: rgba(255, 255, 255, 0.15);
+  --glass-shd: 0 8px 28px rgba(20, 24, 40, 0.25);
+
+  --tab-shell: rgba(255, 255, 255, 0.12);
+  --tab-hl: rgba(255, 255, 255, 0.96);
+  --tab-active: #4b5fb0;
+  --tab-idle: rgba(255, 255, 255, 0.75);
 }
 
 /* 메인 폰트 */
@@ -63,8 +88,35 @@
   src: url('/fonts/TheCircleM.ttf') format('truetype');
 }
 
+@font-face {
+  font-family: 'RosieBrown';
+  src: url('/fonts/Rosie Brown Serif Demo.otf') format('opentype');
+}
+
+.font-RosieBrown {
+  font-family: var(--font-RosieBrown);
+}
+
+@font-face {
+  font-family: HelloHoney;
+  src: url('/fonts/hello honey.otf') format('opentype');
+}
+
+.font-HelloHoney {
+  font-family: var(--font-HelloHoney);
+}
+
 .font-TheCircleM {
   font-family: var(--font-circle);
+}
+
+@font-face {
+  font-family: QuietlyRose;
+  src: url('/fonts/Quietly Rose Single Line.ttf') format('truetype');
+}
+
+.font-QuietlyRose {
+  font-family: var(--font-QuietlyRose);
 }
 
 @font-face {
@@ -111,6 +163,32 @@
   font-family: var(--font-D2Coding);
 }
 
+@font-face {
+  font-family: 'Saturday';
+  src: url('/fonts/Saturday.ttf') format('truetype');
+}
+
+.font-Saturday {
+  font-family: var(--font-Saturday);
+}
+
+@font-face {
+  font-family: 'Skittle';
+  src: url('/fonts/SKITTLE.otf') format('opentype');
+}
+
+.font-Skittle {
+  font-family: var(--font-Skittle);
+}
+
+@font-face {
+  font-family: 'Southampton';
+  src: url('/fonts/Southampton.ttf') format('truetype');
+}
+
+.font-Southampton {
+  font-family: var(--font-Southampton);
+}
 
 @theme inline {
   --color-background: var(--background);

@@ -25,6 +25,7 @@ function LLMDebugInputPanelBase({ maxWidth = 600, dense = true, inputMaxWidth = 
     const [input, setInput] = useState('')
     const [isComposing, setIsComposing] = useState(false)
     const taRef = useRef<HTMLTextAreaElement | null>(null)
+    const lastSendAt = useRef(0)
 
     const { send, isConnected, reconnect, stop } = useLLMStream()
     const addMessage = useLLMStore((s) => s.addMessage)
@@ -36,20 +37,32 @@ function LLMDebugInputPanelBase({ maxWidth = 600, dense = true, inputMaxWidth = 
         if (taRef.current) autoGrow(taRef.current)
     }, [input])
 
+    const reallySend = useCallback((text: string) => {
+        const now = Date.now()
+        if (now - lastSendAt.current < 300) return
+        lastSendAt.current = now
+
+        addMessage({ role: 'user', message: text })
+        send(text)
+        setInput('')
+        if (taRef.current) {
+            taRef.current.style.height = MIN_H + 'px'
+            taRef.current.focus()
+        }
+    }, [addMessage, send])
+
     const doSend = useCallback(() => {
         const trimmed = input.trim()
         if (!trimmed) {
             toast.info({ key: 'empty-input', title: '입력 없음', description: '보낼 내용을 입력해 주세요.', compact: true, duration: 1600 })
             return
         }
-        addMessage({ role: 'user', message: trimmed })
-        send(trimmed)
-        setInput('')
-        if (taRef.current) {
-            taRef.current.style.height = '40px'
-            taRef.current.focus()
+        if (!isConnected) {
+            toast.error({ key: 'not-connected', title: '연결 끊김', description: '먼저 재연결을 눌러주세요.', compact: true, duration: 1600 })
+            return
         }
-    }, [input, addMessage, send])
+        reallySend(trimmed)
+    }, [input, addMessage, reallySend])
 
     const onKeyDown = useCallback(
         (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -78,15 +91,22 @@ function LLMDebugInputPanelBase({ maxWidth = 600, dense = true, inputMaxWidth = 
                 )}
                 style={{ maxWidth }}
             >
+                <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-200
+                            [background:linear-gradient(135deg,rgba(211,195,252,.35),rgba(154,197,252,.35))]
+                            focus-within:opacity-100"
+                />
+
                 <div className="mb-2 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                         {isConnected ? (
-                            <span className="inline-flex items-center gap-1 text-emerald-300 text-[11px] font-medium">
+                            <span className="inline-flex items-center gap-1 text-emerald-300 text-[11px] font-medium" aria-live='polite'>
                                 <Wifi className="w-3.5 h-3.5" /> 연결됨
                             </span>
                         ) : (
                             <>
-                                <span className="inline-flex items-center gap-1 text-rose-300 text-[11px] font-medium">
+                                <span className="inline-flex items-center gap-1 text-rose-300 text-[11px] font-medium" aria-live='polite'>
                                     <WifiOff className="w-3.5 h-3.5" /> 연결 끊김
                                 </span>
                                 <button
@@ -101,7 +121,7 @@ function LLMDebugInputPanelBase({ maxWidth = 600, dense = true, inputMaxWidth = 
                     </div>
 
                     <button
-                        onClick={() => setAutoSpeakEnabled(!autoSpeakEnabled)}
+                        onClick={toggleTTS}
                         className={clsx(
                             'inline-flex items-center gap-1.5 rounded-md border transition',
                             autoSpeakEnabled
@@ -128,7 +148,7 @@ function LLMDebugInputPanelBase({ maxWidth = 600, dense = true, inputMaxWidth = 
                     <div
                         aria-hidden
                         className="pointer-events-none absolute left-0 top-0 h-full w-[5px]"
-                        style={{ background: 'linear-gradient(180deg, rgba(204,180,255,.35), rgba(150,180,255,.35))' }}
+                        style={{ background: 'linear-gradient(180deg, rgba(211,195,252,.35), rgba(154,197,252,.35))' }}
                     />
 
                     <div className='min-w-0 w-full' style={{ maxWidth: inputMaxWidth }}>
@@ -146,6 +166,7 @@ function LLMDebugInputPanelBase({ maxWidth = 600, dense = true, inputMaxWidth = 
                                 'leading-[1.35] overflow-y-auto',
                                 dense ? 'text-[13px] px-3 py-2 min-h-[34px] max-h-[96px]' : 'text-sm px-3 py-2.5'
                             )}
+                            aria-label='메시지 입력'
                         />
                     </div>
 
@@ -160,22 +181,15 @@ function LLMDebugInputPanelBase({ maxWidth = 600, dense = true, inputMaxWidth = 
                             </button>
                         ) : (
                             <button
-                                onClick={() => {
-                                    const trimmed = input.trim()
-                                    if (!trimmed) return
-                                    addMessage({ role: 'user', message: trimmed })
-                                    send(trimmed)
-                                    setInput('')
-                                    if (taRef.current) { taRef.current.style.height = MIN_H + 'px'; taRef.current.focus() }
-                                }}
-                                disabled={!input.trim()}
+                                onClick={doSend}
+                                disabled={!input.trim() || !isConnected}
                                 className={clsx(
-                                    'inline-flex items-center justify-center w-9 h-9 rounded-md border border-white/10 transition',
-                                    input.trim()
-                                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                                        : 'bg-white/10 text-white/60 cursor-not-allowed'
+                                    'inline-flex items-center justify-center w-9 h-9 rounded-md border transition',
+                                    (input.trim() && isConnected)
+                                        ? 'text-white [background:linear-gradient(135deg,#d3c3fc,#9ac5fc)] hover:brightness-110 border-white/10'
+                                        : 'bg-white/10 text-white/60 cursor-not-allowed border-white/10'
                                 )}
-                                title="전송"
+                                title={isConnected ? '전송' : '연결 필요'}
                             >
                                 {isConnected ? <Send className="w-4 h-4" /> : <Loader2 className="w-4 h-4 animate-spin" />}
                             </button>

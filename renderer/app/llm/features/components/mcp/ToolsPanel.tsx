@@ -142,7 +142,6 @@ export default function ToolsPanel() {
         })
     }, [])
 
-    // REST::JSON 파서
     function parseRestCommandString(cmd: string): null | { method: string; url: string; headers?: any; body?: any; timeout?: number } {
         if (!cmd.startsWith('REST::')) return null
         try {
@@ -182,7 +181,6 @@ export default function ToolsPanel() {
                         req = mcpHttp.request({ url: parsed.url, method: m as any, data: parsed.body, ...cfg })
                     }
                 } else {
-                    // 구버전: command 에 URL만 들어있음 → GET
                     req = mcpHttp.get(tool.command)
                 }
             } else if (tool.type === 'powershell') {
@@ -472,9 +470,7 @@ export default function ToolsPanel() {
                     initial={editingTool}
                     onClose={() => setEditorOpen(false)}
                     onTest={async (draft) => {
-                        // 모달 안 “테스트 실행”
                         const fake: Tool = { ...draft, id: draft.id ?? -1 }
-                        // ToolsPanel의 실행 로직 재사용
                         await (async () => {
                             if (!fake.enabled) fake.enabled = true
                             await executeTool(fake)

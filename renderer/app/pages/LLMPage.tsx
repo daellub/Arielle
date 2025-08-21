@@ -1,10 +1,11 @@
 // app/pages/LLMPage.tsx
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { WandSparkles } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { CommandIcon } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { shallow } from 'zustand/shallow'
+import clsx from 'clsx'
 
 import ChatBubbleList from '@/app/llm/features/components/ChatBubbleList'
 import CharacterStatusCard from '@/app/llm/features/components/CharacterStatusCard'
@@ -33,7 +34,6 @@ export default function LLMPage() {
         blendshape: 'Neutral',
     })
     const [langTab, setLangTab] = useState<LangTab>('원어')
-
     
     useEffect(() => {
         const unsub = useLLMStore.subscribe(
@@ -67,31 +67,25 @@ export default function LLMPage() {
 
     const sparkles = useMemo<Sparkle[]>(
         () =>
-            Array.from({ length: 20 }, () => ({
+            Array.from({ length: 12 }, () => ({
                 top: `${Math.random() * 100}%`,
                 left: `${Math.random() * 100}%`,
-                delay: `${Math.random() * 5}s`,
-                duration: `${3 + Math.random() * 2}s`,
+                delay: `${Math.random() * 6}s`,
+                duration: `${3 + Math.random() * 3}s`,
             })),
         []
     )
 
     return (
-        <div className="w-full h-full flex flex-col overflow-hidden relative text-white">
-            <div
-                aria-hidden
-                className="fixed top-[-50px] right-[-100px] w-[500px] h-[500px] bg-[#a49aff] rounded-full blur-[180px] opacity-20 z-0 pointer-events-none"
-            />
-
-            <div
-                aria-hidden
-                className="fixed bottom-[-80px] left-[-120px] w-[300px] h-[300px] bg-[#c8b9ff] rounded-full blur-[150px] opacity-10 z-0 pointer-events-none"
-            />
+        <div className={clsx(styles.container, 'text-white [isolation:isolate]')}>
+            <div className={styles.bgHalo} aria-hidden />
+            <div className={styles.auroraArc} aria-hidden />
+            <div className={styles.gridOverlay} aria-hidden />
 
             {sparkles.map((s, i) => (
                 <div
                     key={i}
-                    className="absolute w-[6px] h-[6px] rounded-full bg-white/30 blur-[2px] animate-ping z-0 pointer-events-none"
+                    className={styles.sparkle}
                     style={{
                         top: s.top,
                         left: s.left,
@@ -100,15 +94,16 @@ export default function LLMPage() {
                         willChange: 'transform, opacity',
                         transform: 'translateZ(0)'
                     }}
+                    aria-hidden
                 />
             ))}
 
-            <div className="flex-1 overflow-y-auto relative z-10 min-h-0">
+            <div className="flex-1 overflow-hidden relative z-10 min-h-0">
                 <div className="max-w-screen-xl mx-auto px-20 py-12 space-y-10">
                     <div className="flex items-center gap-3 mb-4">
-                        <WandSparkles className="w-6 h-6 text-[#4f83ff] drop-shadow" />
-                        <h1 className="text-3xl font-bold text-[#b0caff] tracking-wide drop-shadow-sm">
-                            Arielle <span className="font-light text-[#6f84a8]">Dialogue Panel</span>
+                        <CommandIcon className="w-8 h-8 text-white/80" />
+                        <h1 className="text-3xl font-bold font-QuietlyRose text-[#b0caff] tracking-wide drop-shadow-sm">
+                            LLM <span className="font-QuietlyRose text-[#6f84a8]">Control Panel</span>
                         </h1>
                     </div>
 
@@ -125,32 +120,31 @@ export default function LLMPage() {
                             </div>
                         </div>
 
-                        <div className="col-span-6 relative h-[calc(100vh-180px)]
-                            min-h-0 bg-white/5 opacity-60 hover:opacity-75 backdrop-blur-xl
-                            border border-white/10 rounded-[28px]
-                            shadow-[0_8px_32px_rgba(255,255,255,0.05)]
-                            p-8 flex flex-col justify-end transition-all"
+                        <div
+                            className={clsx(
+                                'col-span-6 relative h-[calc(100vh-180px)] min-h-0 p-8',
+                                'grid grid-rows-[1fr_auto] gap-3',
+                                styles.glass,
+                                styles.mainPanel
+                            )}
                         >
                             <div className="absolute -top-5 right-5 z-10">
-                                <div className="relative flex bg-white/10 rounded-full p-1 shadow-inner backdrop-blur-md w-fit">
+                                <div className={clsx('relative flex rounded-full p-1 w-fit', styles.tabShell)}>
                                     <motion.div
                                         layout
                                         layoutId="tab-highlight"
                                         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                                        className={`
-                                            absolute inset-y-0 w-[50%] rounded-full bg-white shadow
-                                            ${langTab === '원어' ? 'left-0' : 'left-1/2'}
-                                        `}
-                                        style={{ willChange: 'transform' }}
+                                        className={styles.tabHighlight}
+                                        style={{ left: langTab === '원어' ? '0%' : '50%' }}
                                     />
                                     {TABS.map((label) => (
                                         <button
                                             key={label}
                                             onClick={() => setLangTab(label)}
-                                            className={`
-                                                relative z-10 px-4 py-1.5 text-sm font-semibold rounded-full transition-colors
-                                                ${langTab === label ? 'text-indigo-600' : 'text-white/70'}
-                                            `}
+                                            className={clsx(
+                                                'relative z-10 px-4 py-1.5 text-sm font-semibold rounded-full transition-colors',
+                                                langTab === label ? styles.tabActive : styles.tabIdle
+                                            )}
                                         >
                                             {label}
                                         </button>
@@ -158,7 +152,8 @@ export default function LLMPage() {
                                 </div>
                             </div>
 
-                            <div className='flex-1 min-h-0 w-full overflow-hidden'>
+
+                            <div className={clsx('scrollLLMArea flex-1 min-h-0 w-full overflow-y-auto', styles.chatScroll)}>
                                 <AnimatePresence mode="wait" initial={false}>
                                     <motion.div
                                         key={langTab}
@@ -172,12 +167,14 @@ export default function LLMPage() {
                                     </motion.div>
                                 </AnimatePresence>
                             </div>
-
+ 
                             <LLMDebugInputPanel />
                         </div>
 
                         <div className='col-span-3 min-h-0'>
-                            <MCPPanel />
+                            <div className={styles.mcpSkeleton}>
+                                <MCPPanel />
+                            </div>
                         </div>
                     </div>
                 </div>

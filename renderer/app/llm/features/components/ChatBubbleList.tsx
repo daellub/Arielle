@@ -3,7 +3,6 @@
 
 import { useEffect, useMemo, useRef } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import SparkParticlesContainer from './SparkParticlesContainer'
 import StreamingIndicator from './StreamingIndicator'
 import ChatBubble from './ChatBubble'
 import { useLLMStore } from '@/app/llm/features/store/useLLMStore'
@@ -49,10 +48,9 @@ export default function ChatBubbleList({ language }: Props) {
 
     return (
         <div style={{ position: 'relative' }}>
-            <SparkParticlesContainer />
             <div
                 ref={parentRef}
-                className="scrollLLMArea max-h-[475px] overflow-y-auto flex flex-col space-y-5 px-2 py-2 pr-4"
+                className="h-full overflow-y-auto flex flex-col space-y-5 px-2 py-2 pr-4"
             >
                 <div
                     style={{

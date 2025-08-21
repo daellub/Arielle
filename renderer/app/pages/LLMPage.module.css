@@ -5,63 +5,204 @@
     width: 100%;
     height: 100%;
     overflow: hidden;
-    background: radial-gradient(circle at center, #f4f1fa 0%, #e8dbf3 45%, #c8bdeb 70%, #a99fd7 100%);
+    background: transparent;
 }
 
 .container::before {
     content: "";
     position: absolute;
     inset: 0;
-    background: radial-gradient(circle, #e7d8ff 20%, transparent 80%);
-    opacity: 0.2;
-    filter: blur(100px);
-    animation: pulse 6s ease-in-out infinite;
+    background: radial-gradient(circle, rgba(255,255,255,0.28) 22%, transparent 80%);
+    filter: blur(90px);
+    animation: pulse 8s ease-in-out infinite;
     z-index: 0;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    opacity: 0.22;
 }
 
-@keyframes pulse {
-    0%, 100% {
-        opacity: 0.2;
-    }
-    50% {
-        opacity: 0.4;
-    }
+.bgHalo {
+    position: absolute;
+    inset: -20%;
+    background: conic-gradient(
+        from 0deg,
+        rgba(255,255,255,0.10),
+        rgba(255,255,255,0.00),
+        rgba(255,255,255,0.12),
+        rgba(255,255,255,0.00),
+        rgba(255,255,255,0.10)
+    );
+    filter: blur(40px);
+    animation: spinSlow 60s linear infinite;
+    z-index: 0;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    opacity: 0.25;
 }
 
-@keyframes float {
-    0% {
-        transform: translateY(0px);
-        opacity: 0.2;
-    }
-    50% {
-        transform: translateY(-10px);
-        opacity: 0.4;
-    }
-    100% {
-        transform: translateY(0px);
-        opacity: 0.2;
-    }
+.auroraArc {
+    position: absolute;
+    width: 110vmax;
+    height: 110vmax;
+    left: -25%;
+    top: 5%;
+    transform: rotate(18deg);
+    pointer-events: none;
+    z-index: 0;
+    background: 
+        conic-gradient(
+            from 210deg,
+            rgba(255,255,255,0) 0%,
+            rgba(255,255,255,0) 72%,
+            rgba(255,255,255,0.14) 78%,
+            rgba(255,255,255,0) 85%,
+            rgba(255,255,255,0) 100%
+        );
+    filter: blur(60px);
+    mix-blend-mode: screen;
+    opacity: 0.35;
 }
+
+.gridOverlay {
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(transparent 31px, rgba(255,255,255,0.05) 32px),
+        linear-gradient(90deg, transparent 31px, rgba(255,255,255,0.05) 32px);
+    background-size: 32px 32px, 32px 32px;
+    mask-image: radial-gradient(circle at 60% 10%, rgba(0,0,0,0.9), rgba(0,0,0,0.0) 60%);
+    z-index: 1;
+    pointer-events: none;
+    mix-blend-mode: soft-light;
+    opacity: 0.25;
+}
+
+.glass {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 28px;
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 10px 40px rgba(32, 40, 88, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    padding: 16px;
+}
+
+.mainPanel {
+    padding: 24px;
+    position: relative;
+}
+.mainPanel::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: 28px;
+    pointer-events: none;
+    background:
+        radial-gradient(120% 100% at 50% 60%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.26) 100%);
+    mix-blend-mode: multiply;
+    opacity: 0.9;
+}
+.mainPanel::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 28px;
+    pointer-events: none;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+.tabShell {
+    background: rgba(255,255,255,0.10);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.18);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+.tabHighlight {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 50%;
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.88), rgba(255,255,255,0.78));
+    box-shadow: 0 8px 22px rgba(0,0,0,0.20);
+    will-change: transform, left;
+}
+.tabActive { color: #263a7a; }
+.tabIdle   { color: rgba(255,255,255,0.78); }
 
 .sparkle {
     position: absolute;
-    width: 6px;
-    height: 6px;
+    width: 3px;
+    height: 3px;
     background: white;
     border-radius: 9999px;
-    opacity: 0.6;
-    filter: blur(1px) drop-shadow(0 0 6px #ffffff88);
-    animation: float 4s ease-in-out infinite;
+    opacity: 0.5;
+    filter: blur(0.8px) drop-shadow(0 0 6px #ffffff88);
+    animation: float 4.8s ease-in-out infinite;
     pointer-events: none;
-    z-index: 2;
+    z-index: 0;
+    mix-blend-mode: screen;
 }
 
-@keyframes wave {
-    0% { height: 20%; }
-    50% { height: 100%; }
-    100% { height: 20%; }
+.mcpSkeleton {
+    position: relative;
+}
+.mcpSkeleton::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    pointer-events: none;
+    background:
+        radial-gradient(120% 100% at 20% 0%, rgba(255,255,255,0.06), transparent 60%),
+        radial-gradient(100% 100% at 100% 60%, rgba(255,255,255,0.04), transparent 60%);
+    mix-blend-mode: screen;
+    opacity: 0.6;
 }
 
-.animate-wave {
-    animation: wave 1.2s ease-in-out infinite;
+.chatScroll {
+    position: relative;
+    z-index: 0;
+    overscroll-behavior: contain;
+    padding-right: 4px;
+}
+.inputDock {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    padding: 8px 12px max(10px, env(safe-area-inset-bottom));
+    z-index: 10;
+
+    background: linear-gradient(
+        180deg,
+        rgba(12,16,28,0) 0%,
+        rgba(12,16,28,0.06) 40%,
+        rgba(12,16,28,0.10) 100%
+    );
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+}
+
+
+@keyframes pulse {
+    0%, 100% { opacity: 0.18; }
+    50%      { opacity: 0.36; }
+}
+@keyframes float {
+    0%   { transform: translateY(0px);   opacity: 0.28; }
+    50%  { transform: translateY(-10px); opacity: 0.55; }
+    100% { transform: translateY(0px);   opacity: 0.28; }
+}
+@keyframes spinSlow {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .container::before,
+    .bgHalo,
+    .sparkle {
+        animation: none !important;
+    }
 }
